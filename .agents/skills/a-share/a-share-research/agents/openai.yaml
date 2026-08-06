@@ -1,0 +1,7 @@
+interface:
+  display_name: "A股投研入口"
+  short_description: "Route A-share research workflows safely"
+  default_prompt: "Use $a-share-research to route and complete this A-share research task."
+
+policy:
+  allow_implicit_invocation: true

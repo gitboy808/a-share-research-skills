@@ -1,0 +1,17 @@
+suite_name: "a-share"
+suite_version: "1.0.0"
+workspace_schema: "a-share-workspace-v3"
+workspace_markers:
+  - "CONTEXT.md"
+  - "研究规则.md"
+  - "经验库.md"
+skills:
+  router: "a-share-research"
+  scan: "a-share-scan"
+  investigate: "a-share-investigate"
+  analyze: "a-share-analyze"
+  review: "a-share-review"
+  meta_review: "a-share-meta-review"
+artifact_schema: "shared/schemas/artifacts.json"
+validation_script: "shared/scripts/validate_workspace.py"
+id_script: "shared/scripts/next_id.py"

@@ -1,0 +1,29 @@
+name: validate
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Initialize clean workspace
+        run: python3 scripts/init_workspace.py --root .
+      - name: Validate workspace
+        run: python3 .agents/skills/a-share/shared/scripts/validate_workspace.py --root .
+      - name: Validate public release boundary
+        run: python3 scripts/validate_release.py
+      - name: Compile deterministic scripts
+        run: |
+          python3 -m py_compile scripts/init_workspace.py \
+            scripts/validate_release.py \
+            .agents/skills/a-share/shared/scripts/next_id.py \
+            .agents/skills/a-share/shared/scripts/validate_workspace.py

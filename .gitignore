@@ -1,0 +1,32 @@
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+._*
+*.swp
+*~
+
+# Python and local logs
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.codex-log/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Generated private research workspace
+/当前判断.md
+/经验库.md
+/观察池.md
+/判断日志/
+/观察日志/
+/证据包/
+/运行记录/
+/对象档案/
+/报告/
+/周收敛/

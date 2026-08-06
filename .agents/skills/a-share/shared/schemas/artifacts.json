@@ -1,0 +1,19 @@
+{
+  "schema_version": "a-share-workspace-v3",
+  "artifacts": {
+    "evidence_package": {
+      "required": ["schema_version", "artifact_type", "id", "status", "information_cutoff", "created_at", "objects"]
+    },
+    "strategy_version": {
+      "required": ["schema_version", "artifact_type", "id", "version", "status", "strategy_kind", "scope", "created_at", "parameter_origin"]
+    },
+    "run_record": {
+      "required": ["schema_version", "artifact_type", "id", "status", "created_at", "information_cutoff", "workflows"]
+    }
+  },
+  "allowed_status": {
+    "evidence_package": ["complete", "partial", "unavailable"],
+    "strategy_version": ["trial", "shadow", "official", "limited", "retired"],
+    "run_record": ["completed", "partial", "failed"]
+  }
+}

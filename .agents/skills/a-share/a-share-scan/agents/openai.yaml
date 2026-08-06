@@ -1,0 +1,7 @@
+interface:
+  display_name: "A股机会扫描"
+  short_description: "Find early A-share rotation candidates"
+  default_prompt: "Use $a-share-scan to find low-heat rotation and catch-up candidates without formal predictions."
+
+policy:
+  allow_implicit_invocation: false

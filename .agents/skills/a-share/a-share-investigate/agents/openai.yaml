@@ -1,0 +1,7 @@
+interface:
+  display_name: "A股事实调研"
+  short_description: "Build verified A-share evidence packages"
+  default_prompt: "Use $a-share-investigate to verify facts and build an auditable evidence package."
+
+policy:
+  allow_implicit_invocation: false

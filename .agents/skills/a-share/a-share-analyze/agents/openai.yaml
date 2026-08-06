@@ -1,0 +1,7 @@
+interface:
+  display_name: "A股判断分析"
+  short_description: "Create risk-first A-share judgments"
+  default_prompt: "Use $a-share-analyze to form a falsifiable A-share judgment from valid evidence."
+
+policy:
+  allow_implicit_invocation: false

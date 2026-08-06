@@ -1,0 +1,7 @@
+interface:
+  display_name: "A股双轴复盘"
+  short_description: "Run dual-axis A-share judgment reviews"
+  default_prompt: "Use $a-share-review to review due A-share judgments on outcome and process axes."
+
+policy:
+  allow_implicit_invocation: false

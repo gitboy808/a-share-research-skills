@@ -1,0 +1,7 @@
+interface:
+  display_name: "A股元复盘"
+  short_description: "Calibrate A-share lessons and strategies"
+  default_prompt: "Use $a-share-meta-review to run weekly calibration and governed strategy evolution."
+
+policy:
+  allow_implicit_invocation: false
