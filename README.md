@@ -49,7 +49,7 @@ flowchart LR
 ## 快速开始
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/gitboy808/a-share-research-skills.git
 cd a-share-research-skills
 python3 scripts/init_workspace.py --root .
 python3 .agents/skills/a-share/shared/scripts/validate_workspace.py --root .
