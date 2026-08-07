@@ -123,8 +123,14 @@ def _parse_datetime(value: Any) -> datetime | None:
         parsed = datetime.fromisoformat(candidate)
         return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
     except ValueError:
+        match = re.search(
+            r"\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?(?:[+-]\d{2}:?\d{2}|Z)?)?",
+            candidate,
+        )
+        if not match:
+            return None
         try:
-            parsed = datetime.fromisoformat(candidate[:10])
+            parsed = datetime.fromisoformat(match.group(0).replace("Z", "+00:00"))
             return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
         except ValueError:
             return None
@@ -199,7 +205,12 @@ def _load_units(root: Path, projection_path: Path | None) -> tuple[list[dict[str
     return units, projection_info
 
 
-def _stable_reference(unit: dict[str, Any], root: Path, reasons: list[dict[str, Any]]) -> dict[str, Any]:
+def _stable_reference(
+    unit: dict[str, Any],
+    root: Path,
+    reasons: list[dict[str, Any]],
+    selection_cutoff: Any = None,
+) -> dict[str, Any]:
     locator = dict(unit["source_locator"])
     return {
         "ref": f"atom:{unit['unit_id']}",
@@ -209,6 +220,7 @@ def _stable_reference(unit: dict[str, Any], root: Path, reasons: list[dict[str, 
         "workspace_root": str(root),
         "document_path": unit["document_path"],
         "information_cutoff": unit.get("information_cutoff"),
+        "selection_cutoff": selection_cutoff,
         "status": unit.get("status"),
         "objects": list(unit.get("objects", [])),
         "fields": list(unit.get("fields", [])),
@@ -244,7 +256,15 @@ def assemble(run_manifest: dict[str, Any] | str | Path, task_evidence_manifest: 
     root = _root_from_manifest(run)
     task = instantiate_task_evidence(run, task_evidence_manifest, root)
     projection_path = run.get("projection_path")
-    projection = Path(str(projection_path)).resolve() if projection_path else None
+    if projection_path:
+        projection_candidate = Path(str(projection_path))
+        projection = (
+            projection_candidate.resolve()
+            if projection_candidate.is_absolute()
+            else (root / projection_candidate).resolve()
+        )
+    else:
+        projection = None
     units, projection_info = _load_units(root, projection)
     by_id = {unit["unit_id"]: unit for unit in units}
     cutoff = _parse_datetime(run.get("information_cutoff") or run.get("snapshot_cutoff"))
@@ -252,6 +272,8 @@ def assemble(run_manifest: dict[str, Any] | str | Path, task_evidence_manifest: 
     selected: dict[str, list[dict[str, Any]]] = {}
     coverage_rows: list[dict[str, Any]] = []
     gaps: list[dict[str, Any]] = []
+    normalised_conflicts = {_normalise(item) for item in CONFLICT_STATUSES}
+    normalised_unknowns = {_normalise(item) for item in UNKNOWN_STATUSES}
 
     for requirement in requirements:
         candidates = [unit for unit in units if _matches(unit, requirement)]
@@ -262,8 +284,8 @@ def assemble(run_manifest: dict[str, Any] | str | Path, task_evidence_manifest: 
             for unit in candidates
             if unit not in future
             and unit not in expired
-            and (_normalise(unit.get("status")) not in {_normalise(item) for item in CONFLICT_STATUSES})
-            and (requirement.get("allow_unknown") or _normalise(unit.get("status")) not in {_normalise(item) for item in UNKNOWN_STATUSES})
+            and _normalise(unit.get("status")) not in normalised_conflicts
+            and _normalise(unit.get("status")) not in normalised_unknowns
         ]
         covered = bool(eligible)
         reason = "covered" if covered else "missing"
@@ -273,9 +295,9 @@ def assemble(run_manifest: dict[str, Any] | str | Path, task_evidence_manifest: 
                 reason = "future_information"
             elif expired and len(expired) == len(candidates):
                 reason = "expired"
-            elif statuses & {_normalise(item) for item in CONFLICT_STATUSES}:
+            elif statuses & normalised_conflicts:
                 reason = "conflict_or_denial"
-            elif statuses & {_normalise(item) for item in UNKNOWN_STATUSES}:
+            elif statuses & normalised_unknowns:
                 reason = "unknown"
         row = {
             "requirement_id": requirement.get("requirement_id"),
@@ -284,17 +306,33 @@ def assemble(run_manifest: dict[str, Any] | str | Path, task_evidence_manifest: 
             "covered": covered,
             "candidate_count": len(candidates),
             "eligible_count": len(eligible),
+            "future_count": len(future),
+            "expired_count": len(expired),
+            "conflict_count": sum(1 for unit in candidates if _normalise(unit.get("status")) in normalised_conflicts),
+            "unknown_count": sum(1 for unit in candidates if _normalise(unit.get("status")) in normalised_unknowns),
             "reason": reason,
         }
         coverage_rows.append(row)
         if candidates:
             for unit in candidates:
+                if unit in future:
+                    continue
+                status = _normalise(unit.get("status"))
+                excluded = (
+                    "expired"
+                    if unit in expired
+                    else "conflict_or_denial"
+                    if status in normalised_conflicts
+                    else "unknown"
+                    if status in normalised_unknowns
+                    else None
+                )
                 selected.setdefault(unit["unit_id"], []).append(
                     {
                         "reason": "required_evidence",
                         "requirement_id": requirement.get("requirement_id"),
                         "eligible": unit in eligible,
-                        "excluded": "future" if unit in future else "expired" if unit in expired else None,
+                        "excluded": excluded,
                     }
                 )
         if requirement.get("required", True) and not covered:
@@ -306,6 +344,8 @@ def assemble(run_manifest: dict[str, Any] | str | Path, task_evidence_manifest: 
                     "allow_unknown": requirement.get("allow_unknown", False),
                     "blocking": not requirement.get("allow_unknown", False),
                     "candidate_count": len(candidates),
+                    "future_count": len(future),
+                    "expired_count": len(expired),
                 }
             )
 
@@ -332,6 +372,8 @@ def assemble(run_manifest: dict[str, Any] | str | Path, task_evidence_manifest: 
         if unit_id in by_id:
             candidate_units.append(by_id[unit_id])
     for unit in candidate_units:
+        if _is_future(unit, cutoff):
+            continue
         if unit["unit_id"] not in selected:
             selected[unit["unit_id"]] = [{"reason": "semantic_candidate", "eligible": True, "requirement_id": None}]
 
@@ -352,7 +394,7 @@ def assemble(run_manifest: dict[str, Any] | str | Path, task_evidence_manifest: 
             pass
     selected_ids = required_ids + optional_ids
     references = [
-        _stable_reference(by_id[unit_id], root, selected[unit_id])
+        _stable_reference(by_id[unit_id], root, selected[unit_id], run.get("information_cutoff") or run.get("snapshot_cutoff"))
         for unit_id in selected_ids
         if unit_id in by_id
     ]
@@ -369,6 +411,7 @@ def assemble(run_manifest: dict[str, Any] | str | Path, task_evidence_manifest: 
     result: dict[str, Any] = {
         "schema_version": WORKSPACE_SCHEMA,
         "run_id": run.get("run_id"),
+        "workspace_root": str(root),
         "stage": run.get("stage"),
         "workflow": run.get("workflow"),
         "task_evidence_manifest": task,
@@ -483,9 +526,17 @@ def hydrate(
     for reference in references:
         unit_id = str(reference.get("unit_id") or str(reference.get("ref", "")).removeprefix("atom:"))
         locator = dict(reference.get("source_locator") or {})
+        selection_cutoff = _parse_datetime(reference.get("selection_cutoff"))
+        information_cutoff = _parse_datetime(reference.get("information_cutoff"))
+        excluded_future = any(
+            isinstance(reason, dict) and reason.get("excluded") == "future"
+            for reason in reference.get("selection_reasons", [])
+        )
         if not locator.get("path") and unit_id in fallback_units:
             locator = dict(fallback_units[unit_id]["source_locator"])
         try:
+            if excluded_future or (selection_cutoff and information_cutoff and information_cutoff > selection_cutoff):
+                raise ValueError("future information is outside the selection cutoff")
             if locator.get("kind") == "source_payload":
                 store = source_payload_store or FileSourcePayloadStore(root)
                 verification_text = store.excerpt(

@@ -123,9 +123,12 @@ def _field_aliases(fields: dict[str, list[str]]) -> dict[str, list[str]]:
         "事实": "fact",
         "原子命题": "proposition",
         "关联对象/档案字段": "object_field",
-        "关联对象/档案字段": "object_field",
         "对象类型/名称": "object",
         "状态": "status",
+        "信息快照": "information_cutoff",
+        "信息截止": "information_cutoff",
+        "信息截止时间": "information_cutoff",
+        "快照时间": "information_cutoff",
         "数据交易日": "market_date",
         "事件时间/市场交易日": "market_date",
         "过期条件/下次复核": "expiry",
@@ -299,7 +302,8 @@ def _make_unit(
     roles = fields.get("evidence_role") or fields.get("role") or []
     if not roles and unit_type == "evidence_item":
         roles = ["primary"] if status not in {"冲突", "已否证", "conflict", "否证"} else ["veto"]
-    information_cutoff = metadata.get("information_cutoff") or metadata.get("snapshot_cutoff")
+    cutoff_values = fields.get("information_cutoff") or fields.get("snapshot_cutoff") or []
+    information_cutoff = cutoff_values[0] if cutoff_values else metadata.get("information_cutoff") or metadata.get("snapshot_cutoff")
     text = str(section["content"])
     locator = {
         "kind": "markdown",

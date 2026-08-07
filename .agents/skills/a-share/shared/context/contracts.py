@@ -9,6 +9,7 @@ from typing import Any
 
 WORKSPACE_SCHEMA = "a-share-workspace-v3"
 CONTRACT_SCHEMA = "a-share-task-contract-v1"
+SUPPORTED_CONTRACT_SCHEMAS = {CONTRACT_SCHEMA, WORKSPACE_SCHEMA}
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -27,6 +28,7 @@ def load_contract(reference: Any, workspace_root: Path | None = None) -> dict[st
     """Load a contract by object, path, or repository contract id."""
 
     if isinstance(reference, dict):
+        validate_contract(reference)
         return reference
     if reference is None:
         raise ValueError("task contract is missing")
@@ -47,7 +49,7 @@ def load_contract(reference: Any, workspace_root: Path | None = None) -> dict[st
 
 
 def validate_contract(contract: dict[str, Any]) -> None:
-    if contract.get("schema_version") not in {CONTRACT_SCHEMA, WORKSPACE_SCHEMA}:
+    if contract.get("schema_version") not in SUPPORTED_CONTRACT_SCHEMAS:
         raise ValueError("unsupported task contract schema_version")
     if not contract.get("contract_id"):
         raise ValueError("task contract requires contract_id")

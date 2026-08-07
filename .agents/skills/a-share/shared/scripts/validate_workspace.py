@@ -25,6 +25,7 @@ REQUIRED_PATHS = [
     ".agents/skills/a-share/shared/scripts/context_workspace.py",
 ]
 ARTIFACT_DIRS = ["证据包", "策略库", "运行记录"]
+HISTORICAL_RECORD_DIRS = ["判断日志", "对象档案", "报告", "周收敛", "观察日志"]
 LEGACY_RUNTIME_DIRECTORIES = ["分析报告", "调研报告", "复盘报告", "扫描报告"]
 SKILLS = [
     "a-share-research",
@@ -156,10 +157,14 @@ def main() -> int:
     schema_path = root / ".agents/skills/a-share/shared/schemas/artifacts.json"
     schemas = {}
     allowed = {}
+    contract_schema_versions = {"a-share-task-contract-v1", SCHEMA_VERSION}
     if schema_path.exists():
         definition = json.loads(schema_path.read_text(encoding="utf-8"))
         schemas = definition.get("artifacts", {})
         allowed = definition.get("allowed_status", {})
+        contract_schema_versions = set(
+            definition.get("task_contract", {}).get("accepted_schema_versions", contract_schema_versions)
+        )
     else:
         errors.append("missing artifact schema")
 
@@ -168,7 +173,7 @@ def main() -> int:
         for path in sorted(contracts_root.glob("*.json")):
             try:
                 contract = json.loads(path.read_text(encoding="utf-8"))
-                if contract.get("schema_version") != "a-share-task-contract-v1":
+                if contract.get("schema_version") not in contract_schema_versions:
                     errors.append(f"{path.relative_to(root)}: unsupported task contract schema")
                 if not contract.get("contract_id") or not contract.get("version"):
                     errors.append(f"{path.relative_to(root)}: task contract missing identity/version")
@@ -216,6 +221,28 @@ def main() -> int:
             if key in declared:
                 errors.append(f"duplicate declaration {key}: {declared[key].relative_to(root)} and {path.relative_to(root)}")
             declared[key] = path
+
+    for directory in HISTORICAL_RECORD_DIRS:
+        base = root / directory
+        if not base.exists():
+            continue
+        for path in base.rglob("*.md"):
+            if path.name in {"索引.md", "README.md"}:
+                continue
+            frontmatter = parse_frontmatter(path)
+            if frontmatter is None:
+                errors.append(f"{path.relative_to(root)}: historical record missing frontmatter")
+                continue
+            if frontmatter.get("artifact_type") != "historical_record":
+                errors.append(f"{path.relative_to(root)}: unsupported historical record artifact_type")
+                continue
+            for key in schemas.get("historical_record", {}).get("required", []):
+                if not frontmatter.get(key):
+                    errors.append(f"{path.relative_to(root)}: missing historical field {key}")
+            if frontmatter.get("schema_version") != SCHEMA_VERSION:
+                errors.append(f"{path.relative_to(root)}: unsupported historical schema_version")
+            if frontmatter.get("status") not in allowed.get("historical_record", []):
+                errors.append(f"{path.relative_to(root)}: invalid historical status {frontmatter.get('status')}")
 
     # Workset manifests are JSON sidecars next to persistent run records. They
     # contain only stable references and audit fields, never hydrated text.

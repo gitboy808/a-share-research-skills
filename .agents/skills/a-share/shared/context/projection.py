@@ -192,10 +192,16 @@ def _is_fresh(root: Path, path: Path) -> tuple[bool, dict[str, str]]:
                 row["path"]: row["sha256"] for row in connection.execute("SELECT path, sha256 FROM documents")
             }
             expected_documents = {item["path"]: item["sha256"] for item in documents}
+            stored_unit_count = int(metadata.get("unit_count", "-1"))
+            unit_count = int(connection.execute("SELECT COUNT(*) FROM units").fetchone()[0])
+            fts_count = int(connection.execute("SELECT COUNT(*) FROM units_fts").fetchone()[0])
+            integrity = connection.execute("PRAGMA integrity_check").fetchone()[0]
             fresh = (
                 metadata.get("schema_version") == PROJECTION_SCHEMA_VERSION
                 and metadata.get("source_manifest_hash") == manifest_hash
                 and current_documents == expected_documents
+                and integrity == "ok"
+                and stored_unit_count == unit_count == fts_count
             )
             return fresh, metadata
         finally:

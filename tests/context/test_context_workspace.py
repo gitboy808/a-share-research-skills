@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -285,6 +286,132 @@ class ContextWorkspaceSeamsTest(unittest.TestCase):
             self.assertEqual(result["gaps"][0]["reason"], "conflict_or_denial")
             self.assertFalse(result["gaps"][0]["blocking"])
 
+    def test_allowed_unknown_remains_a_nonblocking_gap(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_fixture_workspace(root)
+            evidence = root / "证据包/2026-08/EVI-20260808-001.md"
+            evidence.write_text(
+                evidence.read_text(encoding="utf-8").replace("多源印证", "未知"),
+                encoding="utf-8",
+            )
+            sys.path.insert(0, str(REPO_ROOT / ".agents/skills/a-share/shared"))
+            from context import assemble  # type: ignore[import-not-found]
+
+            result = assemble(
+                {
+                    "workspace_root": str(root),
+                    "run_id": "RUN-20260808-007",
+                    "information_cutoff": "2026-08-08T09:00:00+08:00",
+                },
+                {
+                    "contract_id": "investigate.synthetic",
+                    "version": "1.0.0",
+                    "required_evidence": [
+                        {
+                            "requirement_id": "market",
+                            "unit_type": "evidence_item",
+                            "object": "市场:A股",
+                            "field": "market_state",
+                            "allow_unknown": True,
+                        }
+                    ],
+                },
+            )
+            self.assertEqual(result["coverage"]["required_covered"], 0)
+            self.assertEqual(result["gaps"][0]["reason"], "unknown")
+            self.assertFalse(result["gaps"][0]["blocking"])
+
+    def test_future_snapshot_is_excluded_and_hydrate_rechecks_cutoff(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_fixture_workspace(root)
+            evidence = root / "证据包/2026-08/EVI-20260808-001.md"
+            evidence.write_text(
+                evidence.read_text(encoding="utf-8").replace(
+                    "- **事实陈述**：测试公司已披露主营业务为测试设备。",
+                    "- **信息快照**：截至 2026-08-09T09:00:00+08:00\n- **事实陈述**：测试公司已披露主营业务为测试设备。",
+                ),
+                encoding="utf-8",
+            )
+            sys.path.insert(0, str(REPO_ROOT / ".agents/skills/a-share/shared"))
+            from context import assemble, hydrate  # type: ignore[import-not-found]
+
+            run = {
+                "workspace_root": str(root),
+                "run_id": "RUN-20260808-008",
+                "information_cutoff": "2026-08-08T09:00:00+08:00",
+            }
+            task = {
+                "contract_id": "investigate.synthetic",
+                "version": "1.0.0",
+                "required_evidence": [
+                    {
+                        "requirement_id": "business",
+                        "unit_type": "evidence_item",
+                        "object": "个股:测试公司(600001)",
+                        "field": "business",
+                    }
+                ],
+            }
+            result = assemble(run, task)
+            self.assertEqual(result["coverage"]["required_covered"], 0)
+            self.assertEqual(result["gaps"][0]["reason"], "future_information")
+            self.assertEqual(result["stable_references"], [])
+
+            unrestricted = assemble({"workspace_root": str(root), "run_id": "RUN-20260808-009"}, task)
+            reference = dict(unrestricted["stable_references"][0])
+            reference["selection_cutoff"] = "2026-08-08T09:00:00+08:00"
+            hydrated = hydrate([reference])
+            self.assertEqual(hydrated["units"], [])
+            self.assertIn("future", hydrated["missing_references"][0]["reason"])
+
+    def test_projection_integrity_rebuilds_when_fts_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_fixture_workspace(root)
+            sys.path.insert(0, str(REPO_ROOT / ".agents/skills/a-share/shared"))
+            from context import assemble  # type: ignore[import-not-found]
+
+            run = {
+                "workspace_root": str(root),
+                "run_id": "RUN-20260808-010",
+                "information_cutoff": "2026-08-08T09:00:00+08:00",
+            }
+            task = {
+                "contract_id": "investigate.synthetic",
+                "version": "1.0.0",
+                "required_evidence": [],
+            }
+            assemble(run, task)
+            projection = root / ".context/projection.sqlite3"
+            connection = sqlite3.connect(projection)
+            try:
+                connection.execute("DROP TABLE units_fts")
+                connection.commit()
+            finally:
+                connection.close()
+            rebuilt = assemble(run, task)
+            self.assertTrue(rebuilt["projection"]["rebuilt"])
+            self.assertFalse(rebuilt["projection"]["projection_degraded"])
+
+    def test_relative_projection_path_is_resolved_inside_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_fixture_workspace(root)
+            sys.path.insert(0, str(REPO_ROOT / ".agents/skills/a-share/shared"))
+            from context import assemble  # type: ignore[import-not-found]
+
+            result = assemble(
+                {
+                    "workspace_root": str(root),
+                    "run_id": "RUN-20260808-011",
+                    "projection_path": ".context/custom.sqlite3",
+                },
+                {"contract_id": "investigate.synthetic", "version": "1.0.0", "required_evidence": []},
+            )
+            self.assertEqual(Path(result["projection"]["path"]), root.resolve() / ".context/custom.sqlite3")
+
     def test_persistent_run_writes_a_machine_readable_workset_manifest_without_original_text(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -324,10 +451,15 @@ class ContextWorkspaceSeamsTest(unittest.TestCase):
                 "复盘报告/2026-08/review.md",
                 "扫描报告/2026-08/scan.md",
                 "证据包/2026-08/EVI-20260808-001.md",
+                "判断日志/2026-08.md",
+                "对象档案/个股/测试公司.md",
             ):
                 path = source / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text("# 历史材料\n\n当时未记录的字段保持未知。\n", encoding="utf-8")
+                content = "# 历史材料\n\n当时未记录的字段保持未知。\n"
+                if relative == "判断日志/2026-08.md":
+                    content = "# 判断日志\n\n## 历史批次\n\n- **J0803-01 v1**｜历史判断正文。\n"
+                path.write_text(content, encoding="utf-8")
             for relative in (
                 "CONTEXT.md",
                 "研究规则.md",
@@ -367,6 +499,11 @@ class ContextWorkspaceSeamsTest(unittest.TestCase):
             self.assertFalse((output / "扫描报告").exists())
             self.assertTrue((output / "报告/分析/2026-08/report.md").is_file())
             self.assertTrue((output / "迁移映射.json").is_file())
+            report = json.loads((output / "迁移映射.json").read_text(encoding="utf-8"))
+            self.assertEqual(report["acceptance"]["status"], "not_run")
+            self.assertTrue((output / "判断日志/2026-08.md").read_text(encoding="utf-8").startswith("---\n"))
+            self.assertTrue((output / "对象档案/个股/测试公司.md").read_text(encoding="utf-8").startswith("---\n"))
+            self.assertTrue((output / "判断日志/迁移-2026-08.md").is_file())
             after = {
                 path.relative_to(source).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
                 for path in source.rglob("*")
