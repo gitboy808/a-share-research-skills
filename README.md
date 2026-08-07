@@ -38,6 +38,28 @@ flowchart LR
 
 详细架构见 [docs/architecture.md](docs/architecture.md)。
 
+## 阶段工作集
+
+投研 skill 通过 `.agents/skills/a-share/shared/context/` 的 `assemble` 与
+`hydrate` 构造阶段工作集。Markdown 仍是唯一事实源；SQLite/FTS5 只是可
+重建投影，语义 adapter 未配置时本地结构化路径仍可用。持久任务的工作集
+清单只保存稳定引用、覆盖、缺口和质量字段，不复制原文或来源载荷。
+
+```bash
+python3 .agents/skills/a-share/shared/scripts/context_workspace.py assemble \
+  --run-manifest run.json --task-evidence task-evidence.json
+python3 .agents/skills/a-share/shared/scripts/context_workspace.py hydrate \
+  --references stable-references.json --root .
+```
+
+历史结构迁移必须使用隔离输入/输出：
+
+```bash
+python3 scripts/migrate_workspace.py --input <历史副本> --output <新副本>
+```
+
+迁移不会修改输入，也不会自动切换任何正式工作区。
+
 ## 环境要求
 
 - Codex CLI、IDE 扩展或 Codex App。

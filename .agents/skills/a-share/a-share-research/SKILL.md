@@ -7,13 +7,19 @@ description: Unified entry for the workspace-bound A-share research system. Use 
 
 Route work; do not create facts, judgments, reviews, lessons, or parameters yourself.
 
+The shared context module is the only context-construction boundary. Use
+`../shared/context/` through `../shared/scripts/context_workspace.py`; do not
+read the projection database, parse Markdown, or call a semantic adapter from
+this router.
+
 ## Preflight
 
 1. Locate the ancestor containing `CONTEXT.md`, `研究规则.md`, `经验库.md`, and `对象档案/索引.md`. This is the only writable research workspace.
 2. Run `python3 ../shared/scripts/validate_workspace.py --root <workspace>` from this skill directory. Stop persistent writes on errors; disclose warnings.
-3. Read `CONTEXT.md`, `研究规则.md`, `经验库.md`, `当前判断.md`, `观察池.md`, `策略库/索引.md`, and `对象档案/索引.md`, then only the relevant dossiers and linked history.
-4. Report in two or three lines: active judgment count, latest lesson-state change or evidence cluster, items due today, active observation count, and relevant dossier staleness.
-5. Create an in-memory run manifest. Save it with `模板/运行记录模板.md` only if a selected workflow makes a persistent write.
+3. Create a versioned run manifest with workflow, stage, object, information cutoff and task contract reference. Instantiate the task evidence list; the model may add conditions but cannot remove contract requirements.
+4. Run `context_workspace.py assemble` and inspect coverage, gaps, projection freshness and adapter degradation. Use `hydrate` for only the critical stable references; keep full source payloads outside the phase context.
+5. Report in two or three lines: active judgment count, latest lesson-state change or evidence cluster, items due today, active observation count, relevant dossier staleness, and workset coverage/degradation.
+6. Save a run record and workset manifest only if a selected workflow makes a persistent write.
 
 ## Route
 
@@ -41,8 +47,8 @@ Read the selected sibling `SKILL.md` completely before running it:
 - `../a-share-review/SKILL.md`
 - `../a-share-meta-review/SKILL.md`
 
-Pass the same run ID and manifest between workflows. Allocate `RUN-YYYYMMDD-NNN` with `../shared/scripts/next_id.py RUN --root <workspace> --date YYYYMMDD` when the first persistent write becomes necessary. Preserve separate information snapshots. Reuse canonical artifacts by ID; never paste one workflow's facts into a different canonical format.
+Pass the same run ID, task contract version and manifest between workflows. Allocate `RUN-YYYYMMDD-NNN` with `../shared/scripts/next_id.py RUN --root <workspace> --date YYYYMMDD` when the first persistent write becomes necessary. Preserve separate information snapshots and phase worksets. Reuse canonical artifacts by ID; never paste one workflow's facts into a different canonical format.
 
 ## Finish
 
-Return the route, canonical artifact IDs, report paths, combined conclusion, unknowns, and any workflow not executed. Reports need a stable path, not an invented artifact ID. Never hide a specialist's abstention or validation failure. Reports must state “不构成投资建议”.
+Return the route, canonical artifact IDs, report paths, workset manifest path, combined conclusion, unknowns, and any workflow not executed. Reports need a stable path, not an invented artifact ID. Never hide a specialist's abstention, coverage gap, projection degradation or validation failure. Reports must state “不构成投资建议”.

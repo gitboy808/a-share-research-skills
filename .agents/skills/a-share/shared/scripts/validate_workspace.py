@@ -20,8 +20,12 @@ REQUIRED_PATHS = [
     "观察池.md",
     "对象档案/索引.md",
     "策略库/索引.md",
+    "模板/工作集清单模板.md",
+    ".agents/skills/a-share/shared/context/__init__.py",
+    ".agents/skills/a-share/shared/scripts/context_workspace.py",
 ]
 ARTIFACT_DIRS = ["证据包", "策略库", "运行记录"]
+LEGACY_RUNTIME_DIRECTORIES = ["分析报告", "调研报告", "复盘报告", "扫描报告"]
 SKILLS = [
     "a-share-research",
     "a-share-scan",
@@ -90,6 +94,9 @@ def main() -> int:
 
     if (root / ".agents/skills/fenxi").exists():
         errors.append("legacy skill directory still exists: .agents/skills/fenxi")
+    for directory in LEGACY_RUNTIME_DIRECTORIES:
+        if (root / directory).exists():
+            errors.append(f"legacy runtime directory still exists: {directory}")
 
     suite_root = root / ".agents/skills/a-share"
     for skill_name in SKILLS:
@@ -122,6 +129,12 @@ def main() -> int:
         if "TODO" in skill_md.read_text(encoding="utf-8"):
             errors.append(f"{skill_name}: unresolved TODO")
 
+    context_root = suite_root / "shared/context"
+    if context_root.is_dir():
+        for path in context_root.glob("*.py"):
+            if "TODO" in path.read_text(encoding="utf-8"):
+                errors.append(f"{path.relative_to(root)}: unresolved TODO")
+
     rule_file = root / "研究规则.md"
     if rule_file.exists():
         rule_count = len(re.findall(r"^- \*\*R\d{2}\b", rule_file.read_text(encoding="utf-8"), re.M))
@@ -149,6 +162,30 @@ def main() -> int:
         allowed = definition.get("allowed_status", {})
     else:
         errors.append("missing artifact schema")
+
+    contracts_root = suite_root / "shared/contracts"
+    if contracts_root.exists():
+        for path in sorted(contracts_root.glob("*.json")):
+            try:
+                contract = json.loads(path.read_text(encoding="utf-8"))
+                if contract.get("schema_version") != "a-share-task-contract-v1":
+                    errors.append(f"{path.relative_to(root)}: unsupported task contract schema")
+                if not contract.get("contract_id") or not contract.get("version"):
+                    errors.append(f"{path.relative_to(root)}: task contract missing identity/version")
+                requirements = contract.get("required_evidence")
+                if not isinstance(requirements, list):
+                    errors.append(f"{path.relative_to(root)}: required_evidence must be a list")
+                else:
+                    seen_requirements: set[str] = set()
+                    for requirement in requirements:
+                        requirement_id = str(requirement.get("requirement_id", "")) if isinstance(requirement, dict) else ""
+                        if not requirement_id:
+                            errors.append(f"{path.relative_to(root)}: requirement missing requirement_id")
+                        elif requirement_id in seen_requirements:
+                            errors.append(f"{path.relative_to(root)}: duplicate requirement_id {requirement_id}")
+                        seen_requirements.add(requirement_id)
+            except (OSError, json.JSONDecodeError, TypeError):
+                errors.append(f"{path.relative_to(root)}: invalid task contract JSON")
 
     declared: dict[tuple[str, str, str], Path] = {}
     for directory in ARTIFACT_DIRS:
@@ -179,6 +216,44 @@ def main() -> int:
             if key in declared:
                 errors.append(f"duplicate declaration {key}: {declared[key].relative_to(root)} and {path.relative_to(root)}")
             declared[key] = path
+
+    # Workset manifests are JSON sidecars next to persistent run records. They
+    # contain only stable references and audit fields, never hydrated text.
+    run_root = root / "运行记录"
+    if run_root.exists():
+        for path in run_root.rglob("*.json"):
+            try:
+                manifest = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                errors.append(f"{path.relative_to(root)}: invalid JSON workset manifest")
+                continue
+            if manifest.get("artifact_type") != "workset_manifest":
+                continue
+            for key in schemas.get("workset_manifest", {}).get("required", []):
+                if key not in manifest or manifest[key] in (None, ""):
+                    errors.append(f"{path.relative_to(root)}: missing workset field {key}")
+            if manifest.get("schema_version") != SCHEMA_VERSION:
+                errors.append(f"{path.relative_to(root)}: unsupported workset schema_version")
+            if manifest.get("status") not in allowed.get("workset_manifest", []):
+                errors.append(f"{path.relative_to(root)}: invalid workset status {manifest.get('status')}")
+            serialized = json.dumps(manifest, ensure_ascii=False)
+            if "verification_text" in serialized or "事实陈述" in serialized:
+                errors.append(f"{path.relative_to(root)}: workset manifest contains source payload text")
+            references = manifest.get("stable_references", [])
+            if not isinstance(references, list):
+                errors.append(f"{path.relative_to(root)}: stable_references must be a list")
+            else:
+                reference_ids: set[str] = set()
+                for reference in references:
+                    if not isinstance(reference, dict) or not reference.get("ref") or not reference.get("unit_id"):
+                        errors.append(f"{path.relative_to(root)}: malformed stable reference")
+                        continue
+                    if reference["unit_id"] in reference_ids:
+                        errors.append(f"{path.relative_to(root)}: duplicate stable unit {reference['unit_id']}")
+                    reference_ids.add(reference["unit_id"])
+                    locator = reference.get("source_locator")
+                    if not isinstance(locator, dict) or not locator.get("path"):
+                        errors.append(f"{path.relative_to(root)}: stable reference missing source locator")
 
     active_files = [root / "AGENTS.md", root / "研究规则.md", *(root / "模板").glob("*.md")]
     active_files += list((root / ".agents/skills/a-share").rglob("SKILL.md"))

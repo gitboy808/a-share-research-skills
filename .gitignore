@@ -30,3 +30,7 @@ __pycache__/
 /对象档案/
 /报告/
 /周收敛/
+
+# Rebuildable context projection and external source payload cache
+/.context/
+/.source-payloads/

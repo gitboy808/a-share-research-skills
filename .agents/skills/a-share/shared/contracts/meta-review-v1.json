@@ -1,0 +1,29 @@
+{
+  "schema_version": "a-share-task-contract-v1",
+  "contract_id": "meta-review.default",
+  "version": "1.0.0",
+  "workflow": "meta-review",
+  "stage": "meta-review",
+  "unknown_policy": "record_gap",
+  "blocking": "block_on_unverifiable_sample_boundary",
+  "required_evidence": [
+    {
+      "requirement_id": "review-window",
+      "unit_type": "judgment_version",
+      "required": true,
+      "allow_unknown": true
+    },
+    {
+      "requirement_id": "lesson-and-cluster",
+      "unit_type": "lesson",
+      "required": true,
+      "allow_unknown": true
+    },
+    {
+      "requirement_id": "strategy-version",
+      "unit_type": "strategy_version",
+      "required": true,
+      "allow_unknown": false
+    }
+  ]
+}

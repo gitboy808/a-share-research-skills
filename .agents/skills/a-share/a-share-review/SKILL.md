@@ -7,9 +7,14 @@ description: Verify A-share judgments with exact market data on separate outcome
 
 Judge the old decision using its original snapshot. Do not use later facts to improve its process score.
 
+Review gets a separate phase workset from `../shared/context/`. Its task
+contract must preserve the original snapshot, evidence and strategy stable
+references; hydrate later market data only for the declared outcome window.
+Do not reuse the prior investigation tool history or stale projection text.
+
 ## Start
 
-If no reusable router manifest exists, perform the preflight in `../a-share-research/SKILL.md`. Read `模板/盘后复盘模板.md`, due items in `当前判断.md`, the canonical monthly log, original evidence package, strategy version, and linked dossier/report.
+If no reusable router manifest exists, perform the preflight in `../a-share-research/SKILL.md`. Assemble the review contract, then load `模板/盘后复盘模板.md`, due-item views, the canonical monthly log, original evidence package, strategy version and linked dossier/report from stable references.
 
 Review at expiry. Before expiry, close only when a predeclared falsifier, official denial, or data/process pollution has occurred. Ordinary price movement or weaker conviction requires a new analysis version, not early scoring.
 

@@ -1,0 +1,32 @@
+{
+  "schema_version": "a-share-task-contract-v1",
+  "contract_id": "review.default",
+  "version": "1.0.0",
+  "workflow": "review",
+  "stage": "review",
+  "unknown_policy": "record_data_incident",
+  "blocking": "block_if_original_snapshot_missing",
+  "required_evidence": [
+    {
+      "requirement_id": "original-judgment",
+      "unit_type": "judgment_version",
+      "required": true,
+      "allow_unknown": false
+    },
+    {
+      "requirement_id": "original-snapshot",
+      "unit_type": "evidence_item",
+      "evidence_role": "primary",
+      "required": true,
+      "allow_unknown": false
+    },
+    {
+      "requirement_id": "outcome-data",
+      "unit_type": "evidence_item",
+      "field": "outcome",
+      "evidence_role": "confirmation",
+      "required": true,
+      "allow_unknown": true
+    }
+  ]
+}

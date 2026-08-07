@@ -7,9 +7,15 @@ description: Verify current A-share market, industry-chain, trading-theme, compa
 
 Produce verified evidence; do not predict.
 
+Use the deep module in `../shared/context/` as the only workset boundary.
+Instantiate the investigate contract, assemble required coverage, and hydrate
+critical source locations. Raw web/PDF/API payloads belong in the external
+source-payload store and must not be copied into the workset or evidence
+package.
+
 ## Start
 
-If no reusable router manifest exists, perform the preflight in `../a-share-research/SKILL.md`. Read `模板/调研报告模板.md`, `模板/证据包模板.md`, relevant dossiers, and the last related evidence package. Freeze cutoff time, timezone, market dates, and data definitions.
+If no reusable router manifest exists, perform the preflight in `../a-share-research/SKILL.md`. Use the assembled workset to load `模板/调研报告模板.md`, `模板/证据包模板.md`, relevant dossier views, and cited evidence units. Freeze cutoff time, timezone, market dates, and data definitions.
 
 ## Source discipline
 

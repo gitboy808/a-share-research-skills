@@ -1,5 +1,5 @@
 suite_name: "a-share"
-suite_version: "1.0.0"
+suite_version: "2.0.0"
 workspace_schema: "a-share-workspace-v3"
 workspace_markers:
   - "CONTEXT.md"
@@ -15,3 +15,11 @@ skills:
 artifact_schema: "shared/schemas/artifacts.json"
 validation_script: "shared/scripts/validate_workspace.py"
 id_script: "shared/scripts/next_id.py"
+context_module: "shared/context/"
+context_cli: "shared/scripts/context_workspace.py"
+task_contracts: "shared/contracts/"
+projection:
+  schema_version: "a-share-context-projection-v1"
+  engine: "sqlite-fts5"
+  authority: "markdown-facts"
+migration_cli: "scripts/migrate_workspace.py"

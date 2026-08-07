@@ -25,8 +25,14 @@ REQUIRED = {
     "CONTEXT.md",
     "研究规则.md",
     "scripts/init_workspace.py",
+    "scripts/migrate_workspace.py",
     ".agents/skills/a-share/a-share-research/SKILL.md",
+    ".agents/skills/a-share/shared/context/__init__.py",
+    ".agents/skills/a-share/shared/scripts/context_workspace.py",
+    "模板/工作集清单模板.md",
 }
+LEGACY_RUNTIME_DIRECTORIES = {"分析报告", "调研报告", "复盘报告", "扫描报告"}
+AUDIT_PATH_ALLOWLIST = {"docs/adr/0028-先完成实现与影子迁移再申请正式切换.md"}
 SECRET_PATTERNS = {
     "OpenAI-style API key": re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
     "GitHub token": re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b"),
@@ -58,6 +64,8 @@ def main() -> int:
         if path.parts and path.parts[0] != "scaffold":
             if relative in PRIVATE_FILES or path.parts[0] in PRIVATE_DIRECTORIES:
                 errors.append(f"private runtime path is tracked: {relative}")
+            if path.parts[0] in LEGACY_RUNTIME_DIRECTORIES:
+                errors.append(f"legacy runtime path is tracked: {relative}")
         if ".agents/skills/fenxi" in relative:
             errors.append(f"legacy skill is tracked: {relative}")
 
@@ -69,6 +77,8 @@ def main() -> int:
         except UnicodeDecodeError:
             continue
         for label, pattern in SECRET_PATTERNS.items():
+            if label == "absolute macOS user path" and relative in AUDIT_PATH_ALLOWLIST:
+                continue
             if pattern.search(text):
                 errors.append(f"{label} found in tracked file: {relative}")
 

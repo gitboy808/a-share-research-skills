@@ -1,0 +1,28 @@
+{
+  "schema_version": "a-share-task-contract-v1",
+  "contract_id": "investigate.market",
+  "version": "1.0.0",
+  "workflow": "investigate",
+  "object_types": ["market"],
+  "stage": "research",
+  "unknown_policy": "record_gap",
+  "blocking": "block_only_on_required_missing",
+  "required_evidence": [
+    {
+      "requirement_id": "market-state",
+      "unit_type": "evidence_item",
+      "field": "market_state",
+      "evidence_role": "primary",
+      "required": true,
+      "allow_unknown": false
+    },
+    {
+      "requirement_id": "funding-environment",
+      "unit_type": "evidence_item",
+      "field": "funding_environment",
+      "evidence_role": "confirmation",
+      "required": true,
+      "allow_unknown": true
+    }
+  ]
+}

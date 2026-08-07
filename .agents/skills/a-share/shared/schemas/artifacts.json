@@ -1,5 +1,16 @@
 {
   "schema_version": "a-share-workspace-v3",
+  "projection": {
+    "schema_version": "a-share-context-projection-v1",
+    "authority": "markdown-facts",
+    "rebuildable": true,
+    "fts": "SQLite FTS5",
+    "stale_policy": "rebuild_then_direct_read"
+  },
+  "task_contract": {
+    "schema_version": "a-share-task-contract-v1",
+    "required": ["schema_version", "contract_id", "version", "required_evidence"]
+  },
   "artifacts": {
     "evidence_package": {
       "required": ["schema_version", "artifact_type", "id", "status", "information_cutoff", "created_at", "objects"]
@@ -9,11 +20,15 @@
     },
     "run_record": {
       "required": ["schema_version", "artifact_type", "id", "status", "created_at", "information_cutoff", "workflows"]
+    },
+    "workset_manifest": {
+      "required": ["schema_version", "artifact_type", "id", "status", "run_id", "created_at", "information_cutoff", "stable_references", "coverage", "gaps"]
     }
   },
   "allowed_status": {
     "evidence_package": ["complete", "partial", "unavailable"],
     "strategy_version": ["trial", "shadow", "official", "limited", "retired"],
-    "run_record": ["completed", "partial", "failed"]
+    "run_record": ["completed", "partial", "failed"],
+    "workset_manifest": ["completed", "partial", "degraded"]
   }
 }

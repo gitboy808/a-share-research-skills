@@ -7,9 +7,15 @@ description: Run weekly governance for the A-share research system: segmented ca
 
 Improve the system without rewriting its history or weakening risk guardrails.
 
+Use a frozen meta-review workset assembled by `../shared/context/`. The
+versioned contract supplies the review window, legacy/current strata, strategy
+versions, evidence clusters and prior workset manifests. Semantic candidates
+can expand reading only after stable-reference hydration; they cannot replace
+the required coverage.
+
 ## Start
 
-If no reusable router manifest exists, perform the preflight in `../a-share-research/SKILL.md`. Read `模板/元复盘模板.md`, the review window's judgments and reviews, `经验库.md`, `策略库/索引.md`, observation logs, data incidents, and prior convergence report. Freeze the meta-review cutoff.
+If no reusable router manifest exists, perform the preflight in `../a-share-research/SKILL.md`. Assemble the meta-review contract, then load `模板/元复盘模板.md`, the review window's judgments and reviews, `经验库.md`, `策略库/索引.md`, observation logs, data incidents, prior convergence report and workset quality fields. Freeze the meta-review cutoff.
 
 ## Workflow
 

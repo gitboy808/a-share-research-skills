@@ -7,9 +7,14 @@ description: Scan A-share industries, themes, and eligible main-board stocks for
 
 Optimize discovery recall without weakening formal judgment standards.
 
+Context construction is delegated to `../shared/context/`. Instantiate the
+scan task contract, call `context_workspace.py assemble`, and hydrate selected
+stable references. Do not parse Markdown, query SQLite/FTS5, or treat semantic
+adapter hits as evidence directly.
+
 ## Start
 
-If no reusable router manifest exists, perform the preflight in `../a-share-research/SKILL.md`. Read `模板/扫描报告模板.md`, `模板/观察候选模板.md`, `观察池.md`, related dossiers, `策略库/索引.md`, and current market lessons. Freeze the scan cutoff and report data coverage.
+If no reusable router manifest exists, perform the preflight in `../a-share-research/SKILL.md`. Use the scan task contract and the assembled workset to load `模板/扫描报告模板.md`, `模板/观察候选模板.md`, relevant resident views and cited atomic units. Freeze the scan cutoff and report data coverage.
 
 ## Scope
 
@@ -19,7 +24,7 @@ If no reusable router manifest exists, perform the preflight in `../a-share-rese
 
 ## Workflow
 
-1. Classify the market-state vector, funding environment, and rotation stage. Mark unknown when independent evidence is insufficient.
+1. Classify the market-state vector, funding environment, and rotation stage from hydrated atomic units. Mark unknown when independent evidence is insufficient.
 2. Identify crowded directions and observable decay: shrinking breadth, leadership divergence, volume without price acceptance, narrative acceleration without funds, or lifecycle exhaustion.
 3. Search for low-heat objects with improving relative strength, breadth, price acceptance, catalyst proximity, overseas validation, or defensive resilience.
 4. Apply the heat-confirmation matrix. Low heat alone is not evidence of potential.

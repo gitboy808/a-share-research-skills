@@ -1,0 +1,27 @@
+{
+  "schema_version": "a-share-task-contract-v1",
+  "contract_id": "scan.default",
+  "version": "1.0.0",
+  "workflow": "scan",
+  "stage": "scan",
+  "unknown_policy": "record_gap",
+  "blocking": "never_block_on_soft_budget",
+  "required_evidence": [
+    {
+      "requirement_id": "market-state",
+      "unit_type": "evidence_item",
+      "field": "market_state",
+      "evidence_role": "primary",
+      "required": true,
+      "allow_unknown": true
+    },
+    {
+      "requirement_id": "heat-confirmation",
+      "unit_type": "evidence_item",
+      "field": "heat_confirmation",
+      "evidence_role": "confirmation",
+      "required": true,
+      "allow_unknown": true
+    }
+  ]
+}

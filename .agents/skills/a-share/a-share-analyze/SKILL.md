@@ -7,9 +7,15 @@ description: Form risk-first A-share market, industry, theme, or stock analyses 
 
 Consume evidence; form auditable conditional judgments. Never perform unrecorded investigation.
 
+Consume only a phase workset assembled by `../shared/context/` from the
+analysis task contract and a formally handed-off evidence package. Hydrate
+critical stable references before use. Do not parse the projection or source
+payloads, and return an explicit increment-investigation request when the
+assembled coverage is insufficient.
+
 ## Start
 
-If no reusable router manifest exists, perform the preflight in `../a-share-research/SKILL.md`. Read `模板/分析报告模板.md`, `模板/判断条目模板.md`, relevant dossiers, judgment chain, current lessons, strategy index, and the cited evidence package.
+If no reusable router manifest exists, perform the preflight in `../a-share-research/SKILL.md`. Use the assembled workset to load `模板/分析报告模板.md`, `模板/判断条目模板.md`, relevant dossier views, judgment-chain references, strategy version and cited evidence package.
 
 Validate task-required evidence item by item. If no evidence package exists, return a non-persistent `investigation_required` workflow block with `research_object`, `snapshot_cutoff`, `required_evidence`, `missing_evidence`, and `next_skill: a-share-investigate`; write no judgment. If a cited package exists but critical evidence is absent, conflicting, or expired, return control to the router to request an explicit evidence refresh. If that refresh is not run or cannot close the critical gaps, issue a scored abstention that cites the existing package and records gaps, confirmation signal, horizon, and counterfactual; do not silently investigate.
 
