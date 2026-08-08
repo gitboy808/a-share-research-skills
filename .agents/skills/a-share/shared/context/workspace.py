@@ -21,6 +21,7 @@ from .contracts import instantiate_task_evidence
 from .markdown import extract_units, iter_source_files
 from .projection import all_units, open_fresh, rows_to_units, search_text
 from .source_payload import FileSourcePayloadStore, SourcePayloadStore
+from .status import status_exclusion
 
 
 WORKSPACE_SCHEMA = "a-share-workspace-v3"
@@ -34,10 +35,6 @@ UNIT_TYPES = {
     "strategy": "strategy_version",
     "strategy_version": "strategy_version",
 }
-CONFLICT_STATUSES = {"冲突", "已否证", "否证", "conflict", "denied", "falsified", "否决"}
-UNKNOWN_STATUSES = {"unknown", "未知", "未证实", "不可取得", "当时未记录"}
-
-
 def _read_json(value: Any) -> Any:
     if isinstance(value, (str, Path)):
         with Path(value).open(encoding="utf-8") as handle:
@@ -272,9 +269,6 @@ def assemble(run_manifest: dict[str, Any] | str | Path, task_evidence_manifest: 
     selected: dict[str, list[dict[str, Any]]] = {}
     coverage_rows: list[dict[str, Any]] = []
     gaps: list[dict[str, Any]] = []
-    normalised_conflicts = {_normalise(item) for item in CONFLICT_STATUSES}
-    normalised_unknowns = {_normalise(item) for item in UNKNOWN_STATUSES}
-
     for requirement in requirements:
         candidates = [unit for unit in units if _matches(unit, requirement)]
         future = [unit for unit in candidates if _is_future(unit, cutoff)]
@@ -284,20 +278,19 @@ def assemble(run_manifest: dict[str, Any] | str | Path, task_evidence_manifest: 
             for unit in candidates
             if unit not in future
             and unit not in expired
-            and _normalise(unit.get("status")) not in normalised_conflicts
-            and _normalise(unit.get("status")) not in normalised_unknowns
+            and status_exclusion(unit.get("status")) is None
         ]
         covered = bool(eligible)
         reason = "covered" if covered else "missing"
         if candidates and not eligible:
-            statuses = {_normalise(unit.get("status")) for unit in candidates}
+            statuses = {status_exclusion(unit.get("status")) for unit in candidates}
             if future and len(future) == len(candidates):
                 reason = "future_information"
             elif expired and len(expired) == len(candidates):
                 reason = "expired"
-            elif statuses & normalised_conflicts:
+            elif "conflict_or_denial" in statuses:
                 reason = "conflict_or_denial"
-            elif statuses & normalised_unknowns:
+            elif "unknown" in statuses:
                 reason = "unknown"
         row = {
             "requirement_id": requirement.get("requirement_id"),
@@ -308,8 +301,8 @@ def assemble(run_manifest: dict[str, Any] | str | Path, task_evidence_manifest: 
             "eligible_count": len(eligible),
             "future_count": len(future),
             "expired_count": len(expired),
-            "conflict_count": sum(1 for unit in candidates if _normalise(unit.get("status")) in normalised_conflicts),
-            "unknown_count": sum(1 for unit in candidates if _normalise(unit.get("status")) in normalised_unknowns),
+            "conflict_count": sum(1 for unit in candidates if status_exclusion(unit.get("status")) == "conflict_or_denial"),
+            "unknown_count": sum(1 for unit in candidates if status_exclusion(unit.get("status")) == "unknown"),
             "reason": reason,
         }
         coverage_rows.append(row)
@@ -317,15 +310,10 @@ def assemble(run_manifest: dict[str, Any] | str | Path, task_evidence_manifest: 
             for unit in candidates:
                 if unit in future:
                     continue
-                status = _normalise(unit.get("status"))
                 excluded = (
                     "expired"
                     if unit in expired
-                    else "conflict_or_denial"
-                    if status in normalised_conflicts
-                    else "unknown"
-                    if status in normalised_unknowns
-                    else None
+                    else status_exclusion(unit.get("status"))
                 )
                 selected.setdefault(unit["unit_id"], []).append(
                     {

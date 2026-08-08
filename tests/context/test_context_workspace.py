@@ -286,6 +286,49 @@ class ContextWorkspaceSeamsTest(unittest.TestCase):
             self.assertEqual(result["gaps"][0]["reason"], "conflict_or_denial")
             self.assertFalse(result["gaps"][0]["blocking"])
 
+    def test_compound_conflict_status_is_excluded_and_marked_as_veto(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            write_fixture_workspace(root)
+            evidence = root / "证据包/2026-08/EVI-20260808-001.md"
+            evidence.write_text(
+                evidence.read_text(encoding="utf-8").replace(
+                    "多源印证", "已确认 / 冲突（解禁股数口径）"
+                ),
+                encoding="utf-8",
+            )
+            sys.path.insert(0, str(REPO_ROOT / ".agents/skills/a-share/shared"))
+            from context import assemble  # type: ignore[import-not-found]
+
+            result = assemble(
+                {
+                    "workspace_root": str(root),
+                    "run_id": "RUN-20260808-005-COMPOUND",
+                    "information_cutoff": "2026-08-08T09:00:00+08:00",
+                },
+                {
+                    "contract_id": "investigate.synthetic",
+                    "version": "1.0.0",
+                    "required_evidence": [
+                        {
+                            "requirement_id": "market",
+                            "unit_type": "evidence_item",
+                            "object": "市场:A股",
+                            "field": "market_state",
+                            "allow_unknown": True,
+                        }
+                    ],
+                },
+            )
+            self.assertEqual(result["coverage"]["required_covered"], 0)
+            self.assertEqual(result["gaps"][0]["reason"], "conflict_or_denial")
+            self.assertEqual(result["coverage"]["requirements"][0]["conflict_count"], 1)
+            self.assertIn("veto", result["stable_references"][0]["evidence_roles"])
+            self.assertEqual(
+                result["stable_references"][0]["selection_reasons"][0]["excluded"],
+                "conflict_or_denial",
+            )
+
     def test_allowed_unknown_remains_a_nonblocking_gap(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

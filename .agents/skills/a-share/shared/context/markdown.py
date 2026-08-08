@@ -13,6 +13,8 @@ import re
 from pathlib import Path
 from typing import Any, Iterable
 
+from .status import is_conflict_status
+
 
 FRONTMATTER_MARKER = "---"
 HEADING_RE = re.compile(r"^(#{2,6})\s+(.+?)\s*$")
@@ -301,7 +303,7 @@ def _make_unit(
     status = str((fields.get("status") or [metadata.get("status") or "unknown"])[0])
     roles = fields.get("evidence_role") or fields.get("role") or []
     if not roles and unit_type == "evidence_item":
-        roles = ["primary"] if status not in {"冲突", "已否证", "conflict", "否证"} else ["veto"]
+        roles = ["veto"] if is_conflict_status(status) else ["primary"]
     cutoff_values = fields.get("information_cutoff") or fields.get("snapshot_cutoff") or []
     information_cutoff = cutoff_values[0] if cutoff_values else metadata.get("information_cutoff") or metadata.get("snapshot_cutoff")
     text = str(section["content"])
