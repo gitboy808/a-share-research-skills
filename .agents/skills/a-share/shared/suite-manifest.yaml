@@ -1,8 +1,6 @@
 suite_name: "a-share"
-suite_version: "2.0.0"
+suite_version: "3.0.0"
 workspace_schema: "a-share-workspace-v3"
-default_release_profile: "live"
-compatibility_release_profile: "full"
 workspace_markers:
   - "CONTEXT.md"
   - "研究规则.md"
@@ -24,6 +22,3 @@ projection:
   schema_version: "a-share-context-projection-v1"
   engine: "sqlite-fts5"
   authority: "markdown-facts"
-migration_cli: "../../../scripts/migrate_workspace.py"
-shadow_replay_cli: "../../../scripts/shadow_replay_workspace.py"
-shadow_replay_schema: "shared/schemas/shadow-replay-v2.json"

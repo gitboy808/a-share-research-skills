@@ -7,6 +7,9 @@ description: Verify current A-share market, industry-chain, trading-theme, compa
 
 Produce verified evidence; do not predict.
 
+Read the workspace-root `研究规则.md` as the sole normative rule source and
+`CONTEXT.md` for domain language. This skill defines investigation execution only.
+
 Use the deep module in `../shared/context/` as the only workset boundary.
 Instantiate the investigate contract, assemble required coverage, and hydrate
 critical source locations. Raw web/PDF/API payloads belong in the external

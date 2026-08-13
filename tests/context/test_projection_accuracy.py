@@ -155,35 +155,6 @@ class ProjectionAccuracyTest(unittest.TestCase):
             self.assertEqual(result["coverage"]["required_covered"], 0)
             self.assertEqual(result["gaps"][0]["reason"], "unrecognized_evidence_status")
 
-    def test_migration_audit_under_judgment_directory_cannot_cover_live_research(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            write_text(
-                root,
-                "判断日志/迁移-2026-08.md",
-                '''---
-schema_version: "a-share-workspace-v3"
-artifact_type: "historical_record"
-id: "HIST-JUDGMENT-202608"
-status: "historical"
-created_at: "当时未记录"
-information_cutoff: "当时未记录"
-record_kind: "judgment_log_migration"
-authority: "migration_audit"
-migration_note: "结构迁移审计"
-migration_missing_fields: "information_cutoff"
----
-# 迁移判断审计
-### J20260809-999 v1
-- **原子命题**：这条旧判断只能用于迁移审计。
-- **状态**：有效
-- **对象类型 / 名称**：个股:测试公司(600001)''',
-            )
-            result = assemble(run_manifest(root), contract([required("J20260809-999 v1", unit_type="judgment_version")]))
-            self.assertEqual(result["coverage"]["required_covered"], 0)
-            self.assertEqual(result["stable_references"], [])
-            self.assertEqual(result["gaps"][0]["reason"], "missing")
-
     def test_unparseable_authoritative_document_is_a_blocking_gap_even_when_floor_is_covered(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -110,12 +110,6 @@
         "required_fields": ["对象类型 / 名称", "发现快照", "状态", "热度—确认象限", "发现依据", "确认触发", "失效条件", "最大可接受价格位移", "预计半衰期 / 到期", "缺失证据", "后续调研优先级"]
       }
     },
-    "historical_record": {
-      "required": ["schema_version", "artifact_type", "id", "status", "created_at", "information_cutoff", "record_kind", "authority", "migration_note", "migration_missing_fields"],
-      "directories": ["判断日志", "对象档案", "报告", "周收敛", "观察日志"],
-      "id_pattern": "^HIST-[A-Za-z0-9-]+$",
-      "authority": "migration_audit"
-    },
     "workset_manifest": {
       "required": ["schema_version", "artifact_type", "id", "status", "run_id", "workflow", "stage", "created_at", "information_cutoff", "task_contract", "contract_instantiation", "instantiated_requirements", "instantiated_requirements_sha256", "strategy_version", "stable_references", "audit_references", "audited_exclusions", "relations", "relation_checks", "verification", "projection", "coverage", "gaps", "quality"],
       "id_pattern": "^RUN-[0-9]{8}-[0-9]{3}-WORKSET-[A-Z0-9._-]+-[A-Z0-9._-]+$",
@@ -125,10 +119,6 @@
       },
       "contract_instantiation": {
         "required": ["schema_version", "workflow", "stage", "information_cutoff", "calibration_window_start", "objects", "handoff", "strategy_version", "task_conditions", "sha256"]
-      },
-      "legacy_snapshot": {
-        "historical_only": true,
-        "required": ["stable_references", "relations", "gaps", "coverage", "hydrate_eligible", "canonical_sha256"]
       },
       "relation_checks": {
         "required": ["total", "resolved", "blocking_gaps"]
@@ -144,19 +134,18 @@
         "context_proxy_required": ["stable_reference_characters", "selected_source_characters", "indexed_source_characters", "raw_tool_payload_characters_entered", "token_replay_available"]
       },
       "relation_types": ["supported_by", "upstream_judgment", "constrained_by", "exception_to", "supported_by_judgment", "uses_strategy"],
-      "audit_relation_types": ["historically_referenced_evidence", "supersedes"]
+      "audit_relation_types": ["supersedes"]
     }
   },
   "allowed_status": {
     "evidence_package": ["complete", "partial", "unavailable"],
-    "strategy_version": ["trial", "shadow", "official", "limited", "retired"],
+    "strategy_version": ["trial", "candidate", "official", "limited", "retired"],
     "run_record": ["completed", "partial", "failed"],
     "presentation_report": ["completed", "partial", "degraded"],
     "judgment_log": ["active", "closed"],
     "object_dossier": ["active", "partial", "ended"],
     "meta_review": ["completed", "partial"],
     "observation_log": ["active", "closed"],
-    "historical_record": ["historical"],
     "workset_manifest": ["completed", "partial", "degraded"]
   }
 }

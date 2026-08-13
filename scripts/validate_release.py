@@ -43,26 +43,12 @@ LIVE_FILES = {
     "docs/architecture.md",
     "docs/adr/0029-以资格模式隔离当前分析与历史审计.md",
 }
-COMPATIBILITY_FILES = {
-    "scripts/migrate_workspace.py",
-    "scripts/shadow_replay_workspace.py",
-    ".agents/skills/a-share/shared/schemas/shadow-replay-v2.json",
-    "docs/shadow-replay-acceptance.md",
-    "docs/adr/0023-历史产物彻底结构迁移并移除兼容.md",
-    "docs/adr/0024-影子回放验收后无兼容切换.md",
-    "docs/adr/0028-先完成实现与影子迁移再申请正式切换.md",
-}
 IGNORED_RUNTIME_PARTS = {"__pycache__", ".DS_Store"}
-LIVE_SUITE_PATH_KEYS = {
+SUITE_PATH_KEYS = {
     "artifact_schema",
     "validation_script",
     "id_script",
     "context_cli",
-}
-COMPATIBILITY_SUITE_PATH_KEYS = {
-    "migration_cli",
-    "shadow_replay_cli",
-    "shadow_replay_schema",
 }
 REQUIRED_CONTRACT_ROLES = {
     ("scan", "scan", None),
@@ -75,11 +61,10 @@ REQUIRED_CONTRACT_ROLES = {
     ("review", "review", None),
     ("meta-review", "meta-review", None),
 }
-LEGACY_RUNTIME_DIRECTORIES = {"分析报告", "调研报告", "复盘报告", "扫描报告"}
 
 
-def _runtime_files(root: Path, profile: str = "live") -> set[str]:
-    """Return the required live surface, optionally including compatibility."""
+def _runtime_files(root: Path) -> set[str]:
+    """Return every file required by the current v3 runtime."""
 
     required = {*BASE_REQUIRED, *LIVE_FILES}
     for relative_root in LIVE_RUNTIME_ROOTS:
@@ -90,16 +75,12 @@ def _runtime_files(root: Path, profile: str = "live") -> set[str]:
             relative = path.relative_to(root)
             if any(part in IGNORED_RUNTIME_PARTS for part in relative.parts):
                 continue
-            if profile == "live" and relative.as_posix() in COMPATIBILITY_FILES:
-                continue
             if path.is_file() or path.is_symlink():
                 required.add(relative.as_posix())
-    if profile == "full":
-        required.update(COMPATIBILITY_FILES)
     return required
 
 
-def _suite_references(root: Path, profile: str = "live") -> tuple[set[str], list[str]]:
+def _suite_references(root: Path) -> tuple[set[str], list[str]]:
     """Resolve declared suite entry points without depending on a YAML package."""
 
     suite_relative = Path(".agents/skills/a-share/shared/suite-manifest.yaml")
@@ -129,10 +110,7 @@ def _suite_references(root: Path, profile: str = "live") -> tuple[set[str], list
                 )
             continue
         match = re.fullmatch(r'([a-z_]+):\s*"([^"]+)"\s*', line)
-        path_keys = set(LIVE_SUITE_PATH_KEYS)
-        if profile == "full":
-            path_keys.update(COMPATIBILITY_SUITE_PATH_KEYS)
-        if match and match.group(1) in path_keys:
+        if match and match.group(1) in SUITE_PATH_KEYS:
             resolved = (suite_root / match.group(2)).resolve()
             try:
                 references.add(resolved.relative_to(root).as_posix())
@@ -174,7 +152,6 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Validate files exposed by a public Git release.")
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--json", action="store_true")
-    parser.add_argument("--profile", choices=("live", "full"), default="live")
     args = parser.parse_args()
 
     root = args.root.resolve()
@@ -192,8 +169,8 @@ def main() -> int:
     else:
         tracked = {item for item in result.stdout.split("\0") if item}
 
-    required = _runtime_files(root, args.profile)
-    suite_references, suite_errors = _suite_references(root, args.profile)
+    required = _runtime_files(root)
+    suite_references, suite_errors = _suite_references(root)
     required.update(suite_references)
     errors.extend(suite_errors)
     errors.extend(_contract_role_errors(root))
@@ -205,10 +182,6 @@ def main() -> int:
         if path.parts and path.parts[0] != "scaffold":
             if relative in PRIVATE_FILES or path.parts[0] in PRIVATE_DIRECTORIES:
                 errors.append(f"private runtime path is tracked: {relative}")
-            if path.parts[0] in LEGACY_RUNTIME_DIRECTORIES:
-                errors.append(f"legacy runtime path is tracked: {relative}")
-        if ".agents/skills/fenxi" in relative:
-            errors.append(f"legacy skill is tracked: {relative}")
 
     findings = scan_files(
         root,
@@ -218,7 +191,7 @@ def main() -> int:
     errors.extend(finding.message() for finding in findings)
 
     payload = {
-        "mode": f"public_release_{args.profile}",
+        "mode": "public_release_v3",
         "root": str(root),
         "tracked_files": len(tracked),
         "errors": errors,

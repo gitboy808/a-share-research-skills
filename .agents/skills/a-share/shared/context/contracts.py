@@ -262,18 +262,18 @@ def _object_type(value: Any) -> str:
     return "unknown"
 
 
-def _validate_contract_compatibility(contract: dict[str, Any], run_manifest: dict[str, Any]) -> None:
+def _validate_contract_alignment(contract: dict[str, Any], run_manifest: dict[str, Any]) -> None:
     expected_workflow = _normalise_name(contract.get("workflow"))
     actual_workflow = _normalise_name(run_manifest.get("workflow"))
     if expected_workflow and expected_workflow != actual_workflow:
         raise ValueError(
-            f"task contract workflow {contract['workflow']!r} is incompatible with run workflow {run_manifest.get('workflow')!r}"
+            f"task contract workflow {contract['workflow']!r} does not match run workflow {run_manifest.get('workflow')!r}"
         )
     expected_stage = _normalise_name(contract.get("stage"))
     actual_stage = _normalise_name(run_manifest.get("stage"))
     if expected_stage and expected_stage != actual_stage:
         raise ValueError(
-            f"task contract stage {contract['stage']!r} is incompatible with run stage {run_manifest.get('stage')!r}"
+            f"task contract stage {contract['stage']!r} does not match run stage {run_manifest.get('stage')!r}"
         )
     expected_object_types = {
         _object_type(value) for value in contract.get("object_types", []) if _object_type(value) != "unknown"
@@ -286,7 +286,7 @@ def _validate_contract_compatibility(contract: dict[str, Any], run_manifest: dic
         if not actual_object_types or not actual_object_types.issubset(expected_object_types):
             raise ValueError(
                 "task contract object_types "
-                f"{sorted(expected_object_types)!r} are incompatible with run objects {sorted(actual_object_types)!r}"
+                f"{sorted(expected_object_types)!r} do not match run objects {sorted(actual_object_types)!r}"
             )
     if expected_workflow in RESEARCH_WORKFLOWS:
         snapshot = run_manifest.get("information_cutoff")
@@ -325,7 +325,7 @@ def _instantiate_object_bindings(
         ]
         if not targets:
             raise ValueError(
-                f"task requirement {requirement.get('requirement_id')!r} has no compatible run object"
+                f"task requirement {requirement.get('requirement_id')!r} has no matching run object"
             )
         for target in targets:
             bound = dict(requirement)
@@ -501,7 +501,7 @@ def instantiate_task_evidence(
         contract = load_contract(task_evidence_contract, workspace_root)
 
     if contract is not None:
-        _validate_contract_compatibility(contract, run_manifest)
+        _validate_contract_alignment(contract, run_manifest)
 
     direct: dict[str, Any] = task_evidence if isinstance(task_evidence, dict) else {}
     if contract is None and _requires_contract(run_manifest):

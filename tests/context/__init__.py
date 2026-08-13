@@ -2,7 +2,7 @@
 
 ``unittest discover`` imports this directory as the top-level name ``context``.
 Load the production package under a private alias so the test package name
-cannot shadow the public module seam.
+cannot mask the public module seam.
 """
 
 from __future__ import annotations

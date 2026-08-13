@@ -7,7 +7,7 @@ from typing import Any
 
 
 _CONFLICT_STATUSES = frozenset({"冲突", "已否证", "否证", "conflict", "denied", "falsified", "否决"})
-_UNKNOWN_STATUSES = frozenset({"unknown", "未知", "未证实", "不可取得", "当时未记录"})
+_UNKNOWN_STATUSES = frozenset({"unknown", "未知", "未证实", "不可取得"})
 _CONFIRMED_EVIDENCE_STATUSES = frozenset({"已确认", "多源印证", "confirmed", "verified"})
 
 

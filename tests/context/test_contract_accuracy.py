@@ -176,7 +176,7 @@ class ContractAccuracyTest(unittest.TestCase):
             self.assertEqual(task["contract_id"], "test.inline")
             self.assertEqual(task["contract_status"], "instantiated")
 
-    def test_research_run_envelope_and_contract_compatibility_fail_closed(self) -> None:
+    def test_research_run_envelope_and_contract_alignment_fail_closed(self) -> None:
         def missing(run: dict[str, object], field: str) -> dict[str, object]:
             run.pop(field)
             return run
@@ -188,7 +188,7 @@ class ContractAccuracyTest(unittest.TestCase):
             ("stage", research_run(".", stage="analysis"), "stage"),
             ("object", research_run(".", objects=["交易主题:错误对象"]), "object_types"),
             ("snapshot", missing(research_run("."), "information_cutoff"), "information snapshot"),
-            ("invalid-snapshot", research_run(".", information_cutoff="当时未记录"), "valid information snapshot"),
+            ("invalid-snapshot", research_run(".", information_cutoff="unknown"), "valid information snapshot"),
         )
         for label, partial, message in cases:
             with self.subTest(label=label), tempfile.TemporaryDirectory() as directory:

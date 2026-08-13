@@ -27,8 +27,7 @@ REQUIRED_PATHS = [
     ".agents/skills/a-share/shared/scripts/context_workspace.py",
 ]
 ARTIFACT_DIRS = ["证据包", "策略库", "运行记录"]
-HISTORICAL_RECORD_DIRS = ["判断日志", "对象档案", "报告", "周收敛", "观察日志"]
-LEGACY_RUNTIME_DIRECTORIES = ["分析报告", "调研报告", "复盘报告", "扫描报告"]
+VERSIONED_MARKDOWN_DIRS = ["判断日志", "对象档案", "报告", "周收敛", "观察日志"]
 SKILLS = [
     "a-share-research",
     "a-share-scan",
@@ -98,102 +97,17 @@ def has_valid_review_date(value: str) -> bool:
     return False
 
 
-def migration_missing_fields(values: dict[str, object]) -> set[str]:
-    raw = values.get("migration_missing_fields")
-    if isinstance(raw, list):
-        return {str(item).strip() for item in raw if str(item).strip()}
-    text = str(raw or "").strip()
-    if not text:
-        return set()
-    try:
-        parsed = json.loads(text)
-    except json.JSONDecodeError:
-        parsed = None
-    if isinstance(parsed, list):
-        return {str(item).strip() for item in parsed if str(item).strip()}
-    return {item.strip() for item in re.split(r"[,;、]", text) if item.strip()}
-
-
-def is_historical_migration_run_record(values: dict[str, object]) -> bool:
-    missing = migration_missing_fields(values)
-    unknown_timestamp_fields = {
-        field
-        for field in ("created_at", "information_cutoff")
-        if values.get(field) == "当时未记录"
-    }
-    return (
-        values.get("status") == "partial"
-        and values.get("workflows") == "historical"
-        and isinstance(values.get("migration_note"), str)
-        and bool(str(values.get("migration_note")).strip())
-        and bool(missing)
-        and unknown_timestamp_fields <= missing
-    )
-
-
-def is_historical_migration_workset(values: dict[str, object]) -> bool:
-    verification = values.get("verification")
-    coverage = values.get("coverage")
-    gaps = values.get("gaps")
-    quality = values.get("quality")
-    legacy_snapshot = values.get("legacy_snapshot")
-    if not all(
-        isinstance(item, dict)
-        for item in (verification, coverage, quality, legacy_snapshot)
-    ) or not isinstance(gaps, list):
-        return False
-    blocking_gaps = sum(
-        1 for gap in gaps if isinstance(gap, dict) and gap.get("blocking") is True
-    )
-    return (
-        values.get("workflow") == "historical"
-        and values.get("status") == "partial"
-        and verification.get("status") == "not_run"
-        and isinstance(values.get("migration_note"), str)
-        and bool(str(values.get("migration_note")).strip())
-        and coverage.get("required_total") == 0
-        and coverage.get("required_covered") == 0
-        and coverage.get("required_missing") == 0
-        and coverage.get("coverage_ratio") == 0.0
-        and coverage.get("blocking") is True
-        and coverage.get("blocking_gap_count") == blocking_gaps
-        and blocking_gaps > 0
-        and quality.get("projection_degraded") is True
-        and values.get("stable_references") == []
-        and values.get("relations") == []
-        and verification.get("required_unit_ids") == []
-        and verification.get("verified_unit_ids") == []
-        and verification.get("missing_references") == []
-        and legacy_snapshot.get("hydrate_eligible") is False
-    )
-
-
 def validate_artifact_timestamps(
     relative: Path,
     artifact_type: str | None,
     values: dict[str, object],
     errors: list[str],
 ) -> None:
-    if artifact_type == "historical_record":
-        for field in ("created_at", "information_cutoff"):
-            value = values.get(field)
-            if value and value != "当时未记录" and parse_timezone_timestamp(value) is None:
-                errors.append(
-                    f"{relative}: historical {field} must be ISO-8601 with timezone or 当时未记录"
-                )
-        return
     if artifact_type not in LIVE_TIMESTAMP_ARTIFACTS:
         return
-    controlled_historical_unknown = (
-        artifact_type == "run_record" and is_historical_migration_run_record(values)
-    ) or (
-        artifact_type == "workset_manifest" and is_historical_migration_workset(values)
-    )
     for field in ("created_at", "information_cutoff"):
         value = values.get(field)
-        if value and parse_timezone_timestamp(value) is None and not (
-            value == "当时未记录" and controlled_historical_unknown
-        ):
+        if value and parse_timezone_timestamp(value) is None:
             errors.append(f"{relative}: {field} must be ISO-8601 with timezone")
 
 
@@ -278,12 +192,6 @@ def validate_workspace(root_input: Path) -> dict[str, object]:
     for rel in REQUIRED_PATHS:
         if not (root / rel).exists():
             errors.append(f"missing required path: {rel}")
-
-    if (root / ".agents/skills/fenxi").exists():
-        errors.append("legacy skill directory still exists: .agents/skills/fenxi")
-    for directory in LEGACY_RUNTIME_DIRECTORIES:
-        if (root / directory).exists():
-            errors.append(f"legacy runtime directory still exists: {directory}")
 
     suite_root = root / ".agents/skills/a-share"
     for skill_name in SKILLS:
@@ -471,7 +379,6 @@ def validate_workspace(root_input: Path) -> dict[str, object]:
     stable_references: set[str] = set()
     pending_source_references: list[tuple[Path, str, str]] = []
     pending_judgment_evidence_references: list[tuple[Path, str, str]] = []
-    historical_migration_runs: dict[str, Path] = {}
     for directory in ARTIFACT_DIRS:
         base = root / directory
         if not base.exists():
@@ -496,13 +403,6 @@ def validate_workspace(root_input: Path) -> dict[str, object]:
             if header is None:
                 continue
             artifact_type, artifact_schema = header
-            if artifact_type == "run_record" and frontmatter.get("workflows") == "historical":
-                run_id = str(frontmatter.get("id", ""))
-                historical_migration_runs[run_id] = path
-                if not is_historical_migration_run_record(frontmatter):
-                    errors.append(
-                        f"{path.relative_to(root)}: historical migration run must remain partial with explicit migration note and missing fields"
-                    )
             key = (artifact_type, frontmatter.get("id", ""), frontmatter.get("version", ""))
             if key in declared:
                 errors.append(f"duplicate declaration {key}: {declared[key].relative_to(root)} and {path.relative_to(root)}")
@@ -788,7 +688,7 @@ def validate_workspace(root_input: Path) -> dict[str, object]:
 
     judgment_versions: dict[str, list[tuple[int, Path]]] = {}
     observation_versions: dict[str, list[tuple[int, Path]]] = {}
-    for directory in HISTORICAL_RECORD_DIRS:
+    for directory in VERSIONED_MARKDOWN_DIRS:
         base = root / directory
         if not base.exists():
             continue
@@ -797,7 +697,7 @@ def validate_workspace(root_input: Path) -> dict[str, object]:
                 continue
             frontmatter = parse_frontmatter(path)
             if frontmatter is None:
-                errors.append(f"{path.relative_to(root)}: historical record missing frontmatter")
+                errors.append(f"{path.relative_to(root)}: versioned artifact missing frontmatter")
                 continue
             header = validate_artifact_header(
                 root=root,
@@ -956,7 +856,6 @@ def validate_workspace(root_input: Path) -> dict[str, object]:
     # Workset manifests are JSON sidecars next to persistent run records. They
     # contain only stable references and audit fields, never hydrated text.
     run_root = root / "运行记录"
-    worksets_by_run: dict[str, list[tuple[Path, dict[str, object]]]] = {}
     if run_root.exists():
         workset_attempt_groups: dict[
             tuple[str, str, str], list[tuple[Path, int, str, object]]
@@ -969,19 +868,7 @@ def validate_workspace(root_input: Path) -> dict[str, object]:
                 continue
             if manifest.get("artifact_type") != "workset_manifest":
                 continue
-            historical_workset = is_historical_migration_workset(manifest)
-            worksets_by_run.setdefault(str(manifest.get("run_id", "")), []).append(
-                (path, manifest)
-            )
             for key in schemas.get("workset_manifest", {}).get("required", []):
-                if historical_workset and key in {
-                    "contract_instantiation",
-                    "instantiated_requirements",
-                    "instantiated_requirements_sha256",
-                    "audit_references",
-                    "audited_exclusions",
-                }:
-                    continue
                 if key not in manifest or manifest[key] in (None, ""):
                     errors.append(f"{path.relative_to(root)}: missing workset field {key}")
             if manifest.get("schema_version") != SCHEMA_VERSION:
@@ -989,58 +876,6 @@ def validate_workspace(root_input: Path) -> dict[str, object]:
             validate_artifact_timestamps(
                 path.relative_to(root), "workset_manifest", manifest, errors
             )
-            if manifest.get("workflow") == "historical" and not historical_workset:
-                errors.append(
-                    f"{path.relative_to(root)}: historical migration workset must remain partial/not_run/blocking with zero coverage"
-                )
-            legacy_snapshot = manifest.get("legacy_snapshot")
-            if manifest.get("workflow") == "historical":
-                if not isinstance(legacy_snapshot, dict):
-                    errors.append(
-                        f"{path.relative_to(root)}: historical migration workset requires an immutable legacy_snapshot"
-                    )
-                else:
-                    legacy_fields = (
-                        "stable_references",
-                        "relations",
-                        "gaps",
-                        "coverage",
-                    )
-                    if any(field not in legacy_snapshot for field in legacy_fields):
-                        errors.append(
-                            f"{path.relative_to(root)}: legacy_snapshot is missing historical audit fields"
-                        )
-                    if legacy_snapshot.get("hydrate_eligible") is not False:
-                        errors.append(
-                            f"{path.relative_to(root)}: legacy_snapshot must never be hydrate eligible"
-                        )
-                    legacy_hash = str(
-                        legacy_snapshot.get("canonical_sha256") or ""
-                    )
-                    if not re.fullmatch(r"[0-9a-f]{64}", legacy_hash):
-                        errors.append(
-                            f"{path.relative_to(root)}: legacy_snapshot canonical_sha256 must be a lowercase SHA-256"
-                        )
-                    elif all(field in legacy_snapshot for field in legacy_fields):
-                        canonical_legacy = json.dumps(
-                            {
-                                field: legacy_snapshot[field]
-                                for field in legacy_fields
-                            },
-                            ensure_ascii=False,
-                            sort_keys=True,
-                            separators=(",", ":"),
-                        )
-                        if hashlib.sha256(
-                            canonical_legacy.encode("utf-8")
-                        ).hexdigest() != legacy_hash:
-                            errors.append(
-                                f"{path.relative_to(root)}: legacy_snapshot canonical_sha256 mismatch"
-                            )
-            elif legacy_snapshot is not None:
-                errors.append(
-                    f"{path.relative_to(root)}: live workset must not contain legacy_snapshot"
-                )
             if manifest.get("status") not in allowed.get("workset_manifest", []):
                 errors.append(f"{path.relative_to(root)}: invalid workset status {manifest.get('status')}")
             workset_schema = schemas.get("workset_manifest", {})
@@ -1057,7 +892,7 @@ def validate_workspace(root_input: Path) -> dict[str, object]:
                 errors.append(
                     f"{path.relative_to(root)}: task_contract requires non-empty contract_id and version"
                 )
-            elif not historical_workset:
+            else:
                 contract_key = (
                     str(task_contract["contract_id"]),
                     str(task_contract["version"]),
@@ -1443,7 +1278,7 @@ def validate_workspace(root_input: Path) -> dict[str, object]:
                         errors.append(
                             f"{path.relative_to(root)}: coverage requirements do not match required_total"
                         )
-                if not historical_workset and isinstance(requirements, list):
+                if isinstance(requirements, list):
                     mirrored_requirements = [
                         row.get("requirement")
                         for row in requirements
@@ -1749,7 +1584,7 @@ def validate_workspace(root_input: Path) -> dict[str, object]:
                     allowed_audit_relation_types = set(
                         workset_schema.get(
                             "audit_relation_types",
-                            ["historically_referenced_evidence"],
+                            ["supersedes"],
                         )
                     )
                     seen_audit_relations: set[tuple[str, str, str]] = set()
@@ -1871,38 +1706,16 @@ def validate_workspace(root_input: Path) -> dict[str, object]:
                         f"{path.relative_to(root)}: previous_manifest_id must resolve to immediate attempt {expected_previous}"
                     )
 
-        for run_id, run_path in historical_migration_runs.items():
-            associated = worksets_by_run.get(run_id, [])
-            if not associated:
-                errors.append(
-                    f"{run_path.relative_to(root)}: historical migration run requires an associated fail-closed workset"
-                )
-                continue
-            for manifest_path, manifest in associated:
-                if not is_historical_migration_workset(manifest):
-                    errors.append(
-                        f"{manifest_path.relative_to(root)}: workset associated with historical migration run must be historical/not_run/blocking"
-                    )
-        for run_id, worksets in worksets_by_run.items():
-            for manifest_path, manifest in worksets:
-                if (
-                    manifest.get("workflow") == "historical"
-                    and run_id not in historical_migration_runs
-                ):
-                    errors.append(
-                        f"{manifest_path.relative_to(root)}: historical migration workset must resolve to a historical migration run"
-                    )
-
     active_files = [root / "AGENTS.md", root / "研究规则.md", *(root / "模板").glob("*.md")]
     active_files += list((root / ".agents/skills/a-share").rglob("SKILL.md"))
-    forbidden = ["弃权不记分", "JMMDD-NN", "买/卖/持有/减仓/放弃"]
+    forbidden = ["弃权不记分", "买/卖/持有/减仓/放弃"]
     for path in active_files:
         if not path.exists():
             continue
         text = path.read_text(encoding="utf-8")
         for token in forbidden:
             if token in text:
-                errors.append(f"{path.relative_to(root)}: forbidden legacy token {token}")
+                errors.append(f"{path.relative_to(root)}: forbidden token {token}")
 
     for path in [root / "AGENTS.md", root / "CONTEXT.md", root / "研究规则.md", *(root / "模板").glob("*.md"), *(root / "docs/adr").glob("*.md")]:
         if path.exists():

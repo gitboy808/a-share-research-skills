@@ -104,7 +104,7 @@ def _split_values(value: Any) -> list[str]:
 
 
 def _evidence_atomic_references(value: Any) -> list[str]:
-    """Expand canonical and legacy package-plus-``#NNN`` evidence refs."""
+    """Expand canonical package-plus-``#NNN`` evidence refs."""
 
     text = str(value or "")
     references = re.findall(r"EVI-[A-Za-z0-9-]+#\d+", text)
@@ -200,8 +200,6 @@ def _field_aliases(fields: dict[str, list[str]]) -> dict[str, list[str]]:
         "来源定位": "source_location",
         "上游判断": "upstream_judgment",
         "证据包/原子证据项": "evidence_reference",
-        "迁移证据审计": "historical_evidence_reference",
-        "历史证据引用": "historical_evidence_reference",
         "基础画像/战术修饰/策略版本": "strategy_reference",
         "策略版本": "strategy_reference",
         "结果状态": "result_status",
@@ -256,13 +254,7 @@ def _object_and_fields(metadata: dict[str, Any], fields: dict[str, list[str]], p
     return normalized_objects, normalized_fields
 
 
-def _authority(path: Path, metadata: dict[str, Any] | None = None) -> str:
-    metadata = metadata or {}
-    if (
-        metadata.get("artifact_type") == "historical_record"
-        or metadata.get("authority") == "migration_audit"
-    ):
-        return "migration_audit"
+def _authority(path: Path) -> str:
     parts = path.parts
     if "证据包" in parts:
         return "evidence_package"
@@ -286,7 +278,7 @@ def _authority(path: Path, metadata: dict[str, Any] | None = None) -> str:
 
 
 def _unit_type(path: Path, section: dict[str, Any], metadata: dict[str, Any]) -> str | None:
-    authority = _authority(path, metadata)
+    authority = _authority(path)
     title = str(section.get("title", ""))
     if authority == "evidence_package" and re.search(r"EVI-[A-Za-z0-9-]+#\d+", title):
         return "evidence_item"
@@ -381,7 +373,7 @@ def extract_units(root: Path, path: Path, *, strict: bool = False) -> list[dict[
     metadata, _ = parse_frontmatter(text)
     if strict and text.startswith(f"{FRONTMATTER_MARKER}\n") and not metadata:
         raise MarkdownParseError(f"cannot parse frontmatter in {relative}")
-    authority = _authority(Path(relative), metadata)
+    authority = _authority(Path(relative))
     units: list[dict[str, Any]] = []
 
     if authority == "research_rules":
@@ -433,8 +425,8 @@ def _make_unit(
     roles = fields.get("evidence_role") or fields.get("role") or []
     if not roles and unit_type == "evidence_item":
         roles = ["veto"] if is_conflict_status(status) else ["primary"]
-    cutoff_values = fields.get("information_cutoff") or fields.get("snapshot_cutoff") or []
-    information_cutoff = cutoff_values[0] if cutoff_values else metadata.get("information_cutoff") or metadata.get("snapshot_cutoff")
+    cutoff_values = fields.get("information_cutoff") or []
+    information_cutoff = cutoff_values[0] if cutoff_values else metadata.get("information_cutoff")
     source_groups = [
         item
         for value in fields.get("source_group", [])
@@ -454,15 +446,6 @@ def _make_unit(
     for value in fields.get("evidence_reference", []):
         for target in _evidence_atomic_references(value):
             relations.append({"from": unit_id, "to": target, "type": "supported_by"})
-    for value in fields.get("historical_evidence_reference", []):
-        for target in _evidence_atomic_references(value):
-            relations.append(
-                {
-                    "from": unit_id,
-                    "to": target,
-                    "type": "historically_referenced_evidence",
-                }
-            )
     for value in fields.get("upstream_judgment", []):
         targets = re.findall(r"J\d{8}-\d{3}(?:\s+v\d+)?", value)
         relation_type = "upstream_judgment"

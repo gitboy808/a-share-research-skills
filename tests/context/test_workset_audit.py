@@ -180,46 +180,6 @@ class WorksetAuditTest(unittest.TestCase):
                 reference["unit_id"],
             )
 
-    def test_historical_migration_workset_cannot_be_upgraded_by_hydrate(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            manifest_path = root / "运行记录/2026-08/RUN-20260801-001-historical-unknown-工作集清单.json"
-            manifest_path.parent.mkdir(parents=True)
-            manifest = {
-                "artifact_type": "workset_manifest",
-                "status": "partial",
-                "workflow": "historical",
-                "verification": {
-                    "status": "not_run",
-                    "required_unit_ids": [],
-                    "verified_unit_ids": [],
-                    "missing_references": [],
-                },
-                "quality": {},
-                "migration_note": "历史运行未保存阶段工作集。",
-            }
-            original = json.dumps(manifest, ensure_ascii=False) + "\n"
-            manifest_path.write_text(original, encoding="utf-8")
-
-            result = hydrate(
-                {
-                    "workspace_root": str(root),
-                    "workset_manifest_path": str(manifest_path),
-                    "stable_references": [],
-                }
-            )
-
-            self.assertEqual(result["workset_manifest_update"]["status"], "degraded")
-            self.assertEqual(
-                result["workset_manifest_update"]["reason"],
-                "historical migration workset cannot be hydrated",
-            )
-            self.assertEqual(manifest_path.read_text(encoding="utf-8"), original)
-            self.assertFalse(
-                (root / ".context").exists(),
-                "historical audit snapshots must not trigger projection reads or rebuilds",
-            )
-
     def test_repeating_the_same_run_stage_creates_a_new_audit_manifest(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

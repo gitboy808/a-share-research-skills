@@ -7,6 +7,9 @@ description: Form risk-first A-share market, industry, theme, or stock analyses 
 
 Consume evidence; form auditable conditional judgments. Never perform unrecorded investigation.
 
+Read the workspace-root `研究规则.md` as the sole normative rule source and
+`CONTEXT.md` for domain language. This skill defines analysis execution only.
+
 Consume only a phase workset assembled by `../shared/context/` from the
 analysis task contract and a formally handed-off evidence package. Hydrate
 critical stable references before use. Do not parse the projection or source

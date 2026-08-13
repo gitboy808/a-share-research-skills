@@ -73,9 +73,7 @@ def compile_policy(
     )
     if cutoff_basis not in {"run_cutoff", "unit_snapshot", "judgment_snapshot"}:
         raise ValueError(f"unsupported eligibility cutoff_basis {cutoff_basis!r}")
-    run_cutoff = run_manifest.get("information_cutoff") or run_manifest.get(
-        "snapshot_cutoff"
-    )
+    run_cutoff = run_manifest.get("information_cutoff")
     judgment_ids = {
         str(value).removeprefix("atom:")
         for value in ((run_manifest.get("handoff") or {}).get("judgment_ids") or [])
@@ -101,9 +99,7 @@ def compile_policy(
                 related_judgment_cutoffs.setdefault(target_id, []).append(
                     judgment_cutoff
                 )
-    window_start = run_manifest.get("calibration_window_start") or run_manifest.get(
-        "window_start"
-    )
+    window_start = run_manifest.get("calibration_window_start")
     if mode == "calibration_window" and parse_datetime(
         window_start, reference=parse_datetime(run_cutoff)
     ) is None:

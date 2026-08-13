@@ -4,7 +4,7 @@
 
 当前内置契约使用 `a-share-task-contract-v1`，并由工作集装配 module 读取。research workflow 或任何持久运行必须在运行清单的 `task_contract` 中引用本目录已注册的原始契约；只接受本目录的文件、ID、版本与内容，不接受 inline 契约，也不从工作区 `contracts/` 解析同名或同 ID 契约。非 research 且非持久的测试/临时运行才可显式使用 inline 或工作区契约。
 
-每个已注册 requirement 必须声明 `eligibility_mode`。模式、cutoff 和生命周期的唯一语义见 [历史上下文资格装配](../context/README.md)；skill 不得自行复刻筛选逻辑。scan、investigate、analyze 使用 `prospective_current`；review 分别使用 `historical_as_of` 的 unit/judgment/run cutoff；meta-review 使用需要 `calibration_window_start` 的 `calibration_window`。
+每个已注册 requirement 必须声明 `eligibility_mode`。模式、cutoff 和生命周期的唯一语义见 [工作集资格装配](../context/README.md)；skill 不得自行复刻筛选逻辑。scan、investigate、analyze 使用 `prospective_current`；review 分别使用 `historical_as_of` 的 unit/judgment/run cutoff；meta-review 使用需要 `calibration_window_start` 的 `calibration_window`。
 
 需要对象专属条件时，通过运行清单传入 `task_contract` 和 `strategy_version`，不要把条件写入 skill 提示词。直接传入的任务证据清单只可增加条件，不能携带第二个契约，也不能代替正式 `task_contract`。追加项使用新 `requirement_id` 时增加要求；使用已有 ID 时必须在对象绑定前与正式要求合并为更严格约束：`required` 只能加严，`allow_unknown` 只能收紧，`min_source_groups` 取较大值，`max_age_days`（含 `freshness.max_age_days` 别名）取较小值。选择器、类型或其他字段无法安全合并时，装配必须 fail closed，不能静默保留先到值。
 

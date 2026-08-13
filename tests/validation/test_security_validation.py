@@ -106,6 +106,7 @@ class SecurityValidationTests(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("mode: public_release_v3", result.stdout)
         self.assertNotIn("OpenAI-style API key", result.stdout)
 
     def test_public_release_requires_the_runtime_contract_and_validation_closure(self) -> None:
@@ -113,11 +114,13 @@ class SecurityValidationTests(unittest.TestCase):
         required_surface = [
             "scripts/security_scan.py",
             "scripts/validate_deployment.py",
+            ".agents/skills/a-share/shared/context/README.md",
             ".agents/skills/a-share/shared/context/eligibility.py",
             ".agents/skills/a-share/shared/scripts/source_payload_store.py",
             ".agents/skills/a-share/shared/contracts/investigate-event-v1.json",
             ".agents/skills/a-share/shared/contracts/investigate-industry-v1.json",
             ".agents/skills/a-share/shared/contracts/investigate-theme-v1.json",
+            "docs/adr/0029-以资格模式隔离当前分析与历史审计.md",
         ]
         subprocess.run(
             ["git", "rm", "--cached", "-q", "--", *required_surface],
@@ -137,19 +140,8 @@ class SecurityValidationTests(unittest.TestCase):
         for relative in required_surface:
             self.assertIn(f"missing required tracked file: {relative}", result.stdout)
 
-    def test_full_release_profile_requires_the_compatibility_kit(self) -> None:
+    def test_public_release_has_no_profile_switch(self) -> None:
         self.initialize_public_repository()
-        required_surface = [
-            "scripts/migrate_workspace.py",
-            "scripts/shadow_replay_workspace.py",
-            ".agents/skills/a-share/shared/schemas/shadow-replay-v2.json",
-            "docs/shadow-replay-acceptance.md",
-        ]
-        subprocess.run(
-            ["git", "rm", "--cached", "-q", "--", *required_surface],
-            cwd=self.workspace,
-            check=True,
-        )
         result = subprocess.run(
             [
                 sys.executable,
@@ -164,11 +156,10 @@ class SecurityValidationTests(unittest.TestCase):
             capture_output=True,
             text=True,
         )
-        self.assertEqual(result.returncode, 1)
-        for relative in required_surface:
-            self.assertIn(f"missing required tracked file: {relative}", result.stdout)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("unrecognized arguments: --profile full", result.stderr)
 
-    def test_public_release_derives_the_full_suite_surface_instead_of_a_handwritten_subset(self) -> None:
+    def test_public_release_derives_the_current_suite_surface_instead_of_a_handwritten_subset(self) -> None:
         self.initialize_public_repository()
         required_surface = [
             ".agents/skills/a-share/shared/contracts/scan-v1.json",

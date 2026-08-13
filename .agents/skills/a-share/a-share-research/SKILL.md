@@ -7,6 +7,9 @@ description: Unified entry for the workspace-bound A-share research system. Use 
 
 Route work; do not create facts, judgments, reviews, lessons, or parameters yourself.
 
+Read the workspace-root `研究规则.md` as the sole normative rule source and
+`CONTEXT.md` for domain language. This skill defines routing and stage execution only.
+
 The shared context module is the only context-construction boundary. Use
 `../shared/context/` through `../shared/scripts/context_workspace.py`; do not
 read the projection database, parse Markdown, or call a semantic adapter from

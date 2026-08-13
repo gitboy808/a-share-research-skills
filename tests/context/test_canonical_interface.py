@@ -36,7 +36,7 @@ class CanonicalContextInterfaceTest(unittest.TestCase):
         self.assertNotIn("workspace", result)
         self.assertNotIn("workset", result)
 
-    def test_live_manifest_aliases_are_rejected(self) -> None:
+    def test_manifest_requires_canonical_keys(self) -> None:
         aliases = {
             "root": "workspace_root",
             "snapshot_cutoff": "information_cutoff",
@@ -77,7 +77,7 @@ class CanonicalContextInterfaceTest(unittest.TestCase):
                     with self.assertRaisesRegex(ValueError, "stable_references"):
                         hydrate({"workspace_root": directory, alias: []})
 
-    def test_cli_rejects_removed_positional_and_flag_aliases(self) -> None:
+    def test_cli_accepts_only_named_input_files(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             run = root / "run.json"

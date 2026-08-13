@@ -7,6 +7,9 @@ description: Scan A-share industries, themes, and eligible main-board stocks for
 
 Optimize discovery recall without weakening formal judgment standards.
 
+Read the workspace-root `研究规则.md` as the sole normative rule source and
+`CONTEXT.md` for domain language. This skill defines scan execution only.
+
 Context construction is delegated to `../shared/context/`. Instantiate the
 scan task contract, call `context_workspace.py assemble`, and hydrate selected
 stable references. Do not parse Markdown, query SQLite/FTS5, or treat semantic

@@ -1,14 +1,17 @@
 ---
 name: a-share-meta-review
-description: Run weekly governance for the A-share research system: segmented calibration, lesson lifecycle changes, scan quality, shadow strategy evaluation, bounded L0-L2 autonomy, rollback, and L3 proposals. Use explicitly for weekly convergence or system optimization, not daily review.
+description: Run weekly governance for the A-share research system: segmented calibration, lesson lifecycle changes, scan quality, candidate-strategy evaluation, bounded L0-L2 autonomy, rollback, and L3 proposals. Use explicitly for weekly convergence or system optimization, not daily review.
 ---
 
 # A-share meta-review
 
 Improve the system without rewriting its history or weakening risk guardrails.
 
+Read the workspace-root `研究规则.md` as the sole normative rule source and
+`CONTEXT.md` for domain language. This skill defines meta-review execution only.
+
 Use a frozen meta-review workset assembled by `../shared/context/`. The
-versioned contract supplies the review window, legacy/current strata, strategy
+versioned contract supplies the review window, current v3 samples, strategy
 versions, evidence clusters and prior workset manifests. Semantic candidates
 can expand reading only after stable-reference hydration; they cannot replace
 the required coverage.
@@ -23,20 +26,20 @@ The registered contract uses `calibration_window`: concluded judgments and retir
 
 ## Workflow
 
-1. Separate legacy and current-schema samples. Segment by outcome, process, confidence band, horizon, market state, driver, pricing mode, and strategy profile. Do not rely on overall hit rate.
+1. Segment current v3 samples by outcome, process, confidence band, horizon, market state, driver, pricing mode, and strategy profile. Do not rely on overall hit rate.
 2. Evaluate abstention quality and scan discovery rate, lead time, false positives, and missed-opportunity counterfactuals.
 3. Cluster repeated errors by independent catalyst/market episode. Process-distorted samples cannot calibrate probabilities.
 4. Apply lesson lifecycle mechanically: observation at one independent cluster; candidate at two to four; validated only at five or more across at least two market states with dual-axis quality; restrict or retire on boundary-breaking counterexamples.
-5. Compare official and shadow strategies on identical information snapshots. Apply the promotion priority: process integrity → risk errors → calibration → judgment quality → opportunity efficiency. A later improvement cannot offset an earlier deterioration.
+5. Compare official and candidate strategies on identical information snapshots. Apply the promotion priority: process integrity → risk errors → calibration → judgment quality → opportunity efficiency. A later improvement cannot offset an earlier deterioration.
 6. L0 records statistics and evidence. L1 changes lesson status under fixed gates. L2 may create, promote, restrict, or roll back only authorized strategy fields.
 7. Structural parameters require at least ten independent evidence clusters, two market states, and four natural weeks by default. Situational parameters may activate immediately only inside declared scope, horizon, and expiry, and may not lower evidence floors.
-8. Every shadow experiment preregisters scope, primary metric, protected metrics, sample definition, stop condition, and rollback value. Never redefine them after observing results.
+8. Every candidate-strategy experiment preregisters scope, primary metric, protected metrics, sample definition, stop condition, and rollback value. Never redefine them after observing results.
 9. Risk principles, evidence floors, abstention, dual-axis review, output boundary, error taxonomy, skill architecture, and field permissions are L3. Propose changes with evidence; do not apply without user confirmation and an ADR when appropriate.
 10. Compact resident files within limits, refresh indexes, and retain all immutable histories.
 
 ## Strategy storage
 
-Use `模板/策略版本模板.md`. Strategy versions are Markdown with YAML metadata under `策略库/`; states are trial, shadow, official, limited, or retired. Trial values are design priors, not validated edge.
+Use `模板/策略版本模板.md`. Strategy versions are Markdown with YAML metadata under `策略库/`; states are trial, candidate, official, limited, or retired. Trial values are design priors, not validated edge.
 
 ## Output and writes
 

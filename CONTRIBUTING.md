@@ -16,15 +16,17 @@ python3 scripts/init_workspace.py --root .
 python3 .agents/skills/a-share/shared/scripts/validate_workspace.py --root .
 python3 scripts/validate_release.py
 python3 -m py_compile scripts/init_workspace.py \
-  scripts/migrate_workspace.py \
+  scripts/security_scan.py \
+  scripts/validate_deployment.py \
   scripts/validate_release.py \
   .agents/skills/a-share/shared/context/*.py \
   .agents/skills/a-share/shared/scripts/context_workspace.py \
   .agents/skills/a-share/shared/scripts/next_id.py \
+  .agents/skills/a-share/shared/scripts/source_payload_store.py \
   .agents/skills/a-share/shared/scripts/validate_workspace.py
 python3 -m unittest discover -s tests -p 'test_*.py'
 ```
 
-工作集测试只通过 `assemble` / `hydrate` 和 `context_workspace.py` JSON CLI；迁移测试必须使用隔离临时目录，不得读取或写入真实个人研究工作区。
+工作集测试只通过 `assemble` / `hydrate` 和 `context_workspace.py` JSON CLI；所有 fixture 使用临时工作区，不得读取或写入真实个人研究数据。
 
-新策略必须从 `trial` 或影子版本开始；新市场教训必须附证据簇、反例和适用边界。
+新策略必须从 `trial` 或 `candidate` 版本开始；新市场教训必须附证据簇、反例和适用边界。

@@ -60,7 +60,7 @@ def _root_from_manifest(run_manifest: dict[str, Any], explicit: Path | None = No
     raise ValueError("run manifest requires workspace_root")
 
 
-def _reject_legacy_manifest_keys(run_manifest: dict[str, Any]) -> None:
+def _reject_noncanonical_manifest_keys(run_manifest: dict[str, Any]) -> None:
     replacements = {
         "root": "workspace_root",
         "workspace": "workspace_root",
@@ -351,7 +351,7 @@ def assemble(run_manifest: dict[str, Any] | str | Path, task_evidence_manifest: 
     run = _read_json(run_manifest)
     if not isinstance(run, dict):
         raise ValueError("run manifest must be a JSON object")
-    _reject_legacy_manifest_keys(run)
+    _reject_noncanonical_manifest_keys(run)
     root = _root_from_manifest(run)
     task_evidence_input = _read_json(task_evidence_manifest)
     task = instantiate_task_evidence(run, task_evidence_input, root)
@@ -692,7 +692,7 @@ def assemble(run_manifest: dict[str, Any] | str | Path, task_evidence_manifest: 
             relation_key = (relation["from"], relation["to"], relation["type"])
             if relation_key in relation_keys:
                 continue
-            if relation["type"] in {"historically_referenced_evidence", "supersedes"}:
+            if relation["type"] == "supersedes":
                 audit_relations.append(relation)
                 continue
             relation_keys.add(relation_key)
@@ -1393,8 +1393,6 @@ def _update_workset_manifest_verification(
     destination, manifest, manifest_references = _manifest_reference_map(
         root, manifest_path
     )
-    if manifest.get("workflow") == "historical":
-        raise ValueError("historical migration workset cannot be hydrated")
     for reference in requested_references:
         unit_id = str(reference.get("unit_id") or "")
         if unit_id not in manifest_references or _canonical_json(
@@ -1577,8 +1575,8 @@ def _persist_workset_manifest(result: dict[str, Any], run_manifest: dict[str, An
             "attempt": attempt,
             "status": "degraded" if result.get("projection", {}).get("projection_degraded") else "partial" if result.get("gaps") else "completed",
             "run_id": run_id,
-            "created_at": run.get("created_at") or cutoff or "当时未记录",
-            "information_cutoff": cutoff or "当时未记录",
+            "created_at": run.get("created_at") or cutoff,
+            "information_cutoff": cutoff,
             "workflow": workflow,
             "stage": stage,
             "task_contract": {

@@ -76,19 +76,6 @@ pip-wheel-metadata/
 /对象档案/
 /报告/
 /周收敛/
-/分析报告/
-/调研报告/
-/复盘报告/
-/扫描报告/
-
-# Rebuildable projections, external source payloads and local acceptance output
+# Rebuildable projections and external source payloads
 /.context/
 /.source-payloads/
-/迁移映射.json
-/migration-report*.json
-/old-baseline*.json
-/measurement-telemetry*.jsonl
-/telemetry-export*.jsonl
-/shadow-report*.json
-/shadow-replay-artifacts/
-/migration-output/

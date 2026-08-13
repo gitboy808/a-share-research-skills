@@ -7,6 +7,9 @@ description: Verify A-share judgments with exact market data on separate outcome
 
 Judge the old decision using its original snapshot. Do not use later facts to improve its process score.
 
+Read the workspace-root `研究规则.md` as the sole normative rule source and
+`CONTEXT.md` for domain language. This skill defines review execution only.
+
 Review gets a separate phase workset from `../shared/context/`. Its task
 contract must preserve the original snapshot, evidence and strategy stable
 references; hydrate later market data only for the declared outcome window.
@@ -34,7 +37,7 @@ Review at expiry. Before expiry, close only when a predeclared falsifier, offici
 8. Group the same catalyst/market move into one evidence cluster. Append support, counterexample, or pause evidence; do not change lesson status or strategy parameters. A single `不适用—合规概率损失` may enter its calibration cohort but must not create lesson-support or counterexample evidence.
 9. Append result, a strict timezone-aware result-recorded timestamp, and process to the canonical log. Remove concluded items from `当前判断.md`; never edit their original text. List factual dossier fields requiring later investigation. The context module derives current eligibility from the append-only result and horizon.
 
-For legacy judgments, audit against the rules and fields required at their original cutoff. Missing v3-only fields are `legacy audit scope limited`, not automatically distorted; never backfill them. Keep legacy calibration separate from v3.
+For every current v3 judgment, preserve the fields, unknowns, and gaps recorded at its original cutoff. Never backfill the original snapshot or treat an explicitly limited audit scope as automatically distorted.
 
 ## Output
 
