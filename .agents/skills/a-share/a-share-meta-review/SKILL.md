@@ -13,9 +13,13 @@ versions, evidence clusters and prior workset manifests. Semantic candidates
 can expand reading only after stable-reference hydration; they cannot replace
 the required coverage.
 
+Follow the [阶段运行协议](../shared/contracts/README.md#阶段运行协议) for every routed or direct run.
+
 ## Start
 
-If no reusable router manifest exists, perform the preflight in `../a-share-research/SKILL.md`. Assemble the meta-review contract, then load `模板/元复盘模板.md`, the review window's judgments and reviews, `经验库.md`, `策略库/索引.md`, observation logs, data incidents, prior convergence report and workset quality fields. Freeze the meta-review cutoff.
+From a router, reuse only its validated workspace and RUN ID. When called directly, validate the workspace and allocate a RUN ID before any persistent write. In both cases, create a fresh phase manifest with `workflow: meta-review`, `stage: meta-review`, canonical review-window objects, a timezone-aware `calibration_window_start`, a timezone-aware `information_cutoff`, the versioned meta-review task contract, and an independent workset-manifest target. Assemble it, then load the review window's judgments and reviews, `经验库.md`, `策略库/索引.md`, observation logs, data incidents, prior convergence report, and workset quality fields from stable references. Freeze both window boundaries.
+
+The registered contract uses `calibration_window`: concluded judgments and retired/limited historical strategy or lesson samples may be inspected inside the window, but their inclusion here never makes them eligible for current analysis. Do not copy calibration samples into a prospective workset.
 
 ## Workflow
 
@@ -36,4 +40,10 @@ Use `模板/策略版本模板.md`. Strategy versions are Markdown with YAML met
 
 ## Output and writes
 
-Use `模板/元复盘模板.md` and write `周收敛/YYYY-Www.md`. May update lesson states, strategy versions, calibration statistics, resident indexes, and archives within L0–L2. Must not modify old evidence packages or judgment snapshots. Reports state “不构成投资建议”.
+May update lesson states, strategy versions, calibration statistics, resident indexes, and archives within L0–L2. Must not modify old evidence packages or judgment snapshots.
+
+## Close research, then present
+
+After lesson, strategy, calibration, and index writes pass workspace validation, confirm that `hydrate` updated this meta-review phase's independently persisted workset manifest and emit its phase closure record. End the research context and release source-payload text and handles, verification excerpts, tool history, and temporary reasoning from the active context; never delete a store entry still referenced by canonical evidence.
+
+Start a new presentation context with `模板/元复盘模板.md`, the closure record, and only canonical artifact IDs and stable references. It may write `周收敛/YYYY-Www.md` without recomputing samples, changing gates, promoting parameters, or introducing new L3 decisions. A presentation failure never rewrites validated lesson or strategy versions. Reports state “不构成投资建议”.

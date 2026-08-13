@@ -13,6 +13,8 @@
       "unit_type": "evidence_item",
       "field": "market_state",
       "evidence_role": "primary",
+      "bind_to_run_objects": true,
+      "eligibility_mode": "prospective_current",
       "required": true,
       "allow_unknown": false
     },
@@ -21,6 +23,8 @@
       "unit_type": "evidence_item",
       "field": "funding_environment",
       "evidence_role": "confirmation",
+      "bind_to_run_objects": true,
+      "eligibility_mode": "prospective_current",
       "required": true,
       "allow_unknown": true
     }

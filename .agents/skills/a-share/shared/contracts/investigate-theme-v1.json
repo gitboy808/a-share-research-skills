@@ -1,17 +1,17 @@
 {
   "schema_version": "a-share-task-contract-v1",
-  "contract_id": "investigate.stock",
+  "contract_id": "investigate.theme",
   "version": "1.0.0",
   "workflow": "investigate",
-  "object_types": ["stock"],
+  "object_types": ["theme"],
   "stage": "research",
   "unknown_policy": "record_gap",
   "blocking": "block_only_on_required_missing",
   "required_evidence": [
     {
-      "requirement_id": "business-realization",
+      "requirement_id": "catalyst-lifecycle",
       "unit_type": "evidence_item",
-      "field": "business",
+      "field": "catalyst_lifecycle",
       "evidence_role": "primary",
       "bind_to_run_objects": true,
       "eligibility_mode": "prospective_current",
@@ -19,11 +19,11 @@
       "allow_unknown": false
     },
     {
-      "requirement_id": "market-structure",
+      "requirement_id": "theme-price-acceptance",
       "unit_type": "evidence_item",
-      "object_type": "market",
-      "field": "market_state",
+      "field": "price_acceptance",
       "evidence_role": "confirmation",
+      "bind_to_run_objects": true,
       "eligibility_mode": "prospective_current",
       "required": true,
       "allow_unknown": true

@@ -26,4 +26,3 @@ _SPEC.loader.exec_module(_MODULE)
 
 assemble = _MODULE.assemble
 hydrate = _MODULE.hydrate
-FileSourcePayloadStore = _MODULE.FileSourcePayloadStore

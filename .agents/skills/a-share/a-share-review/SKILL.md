@@ -12,9 +12,13 @@ contract must preserve the original snapshot, evidence and strategy stable
 references; hydrate later market data only for the declared outcome window.
 Do not reuse the prior investigation tool history or stale projection text.
 
+Follow the [阶段运行协议](../shared/contracts/README.md#阶段运行协议) for every routed or direct run.
+
 ## Start
 
-If no reusable router manifest exists, perform the preflight in `../a-share-research/SKILL.md`. Assemble the review contract, then load `模板/盘后复盘模板.md`, due-item views, the canonical monthly log, original evidence package, strategy version and linked dossier/report from stable references.
+From a router, reuse only its validated workspace and RUN ID. When called directly, validate the workspace and allocate a RUN ID before any persistent write. In both cases, create a fresh phase manifest with `workflow: review`, `stage: review`, canonical objects, a timezone-aware `information_cutoff`, the versioned review task contract, `handoff.judgment_ids`, `handoff.evidence_ids`, and an independent workset-manifest target. Assemble it, then load due-item views, the canonical monthly log, original evidence and strategy versions, and linked dossier fields only from its stable references.
+
+The registered contract compiles three `historical_as_of` boundaries: the original judgment uses its unit snapshot, process evidence uses the original judgment cutoff, and outcome evidence uses the review cutoff. Evidence expiring after the original judgment does not invalidate reconstruction; evidence created after it cannot improve the process score. Do not collapse these boundaries into a review-wide freshness rule.
 
 Review at expiry. Before expiry, close only when a predeclared falsifier, official denial, or data/process pollution has occurred. Ordinary price movement or weaker conviction requires a new analysis version, not early scoring.
 
@@ -28,14 +32,20 @@ Review at expiry. Before expiry, close only when a predeclared falsifier, offici
 6. When evidence identifies a defect, choose one primary error and optional secondary error: data/definition, source, regime, transmission, weighting, horizon/timing, threshold calibration, or exogenous shock. A falsified probabilistic judgment with a compliant process and no identifiable defect uses `不适用—合规概率损失`; it enters aggregate calibration but does not manufacture a lesson from one sample.
 7. Audit original driver, pricing mode, strategy profile, price-discipline gate, chase error, wrong exit, and narrative attribution.
 8. Group the same catalyst/market move into one evidence cluster. Append support, counterexample, or pause evidence; do not change lesson status or strategy parameters. A single `不适用—合规概率损失` may enter its calibration cohort but must not create lesson-support or counterexample evidence.
-9. Append result and process to the canonical log. Remove concluded items from `当前判断.md`; never edit their original text. List factual dossier fields requiring later investigation.
+9. Append result, a strict timezone-aware result-recorded timestamp, and process to the canonical log. Remove concluded items from `当前判断.md`; never edit their original text. List factual dossier fields requiring later investigation. The context module derives current eligibility from the append-only result and horizon.
 
 For legacy judgments, audit against the rules and fields required at their original cutoff. Missing v3-only fields are `legacy audit scope limited`, not automatically distorted; never backfill them. Keep legacy calibration separate from v3.
 
 ## Output
 
-Use `模板/盘后复盘模板.md`. If the user also requests an outlook, finish and freeze review first, then return control to the router for a new investigation and analysis snapshot. Reports state “不构成投资建议”.
+If the user also requests an outlook, finish and freeze review first, then return control to the router. The outlook starts a new investigate phase and then a new analyze phase, each with its own manifest, contract, cutoff, workset, and closure record.
 
 ## Write boundary
 
-May append outcome/process/error/evidence-cluster records, remove concluded current mirrors, and write review reports. Must not rewrite original judgments, promote lessons, adjust parameters, or form a new outlook.
+The research context may append outcome/process/error/evidence-cluster records and remove concluded current mirrors; the later presentation context may write review reports. Neither may rewrite original judgments, promote lessons, adjust parameters, or form a new outlook.
+
+## Close research, then present
+
+After review-log, evidence-cluster, and current-view writes pass workspace validation, confirm that `hydrate` updated this review phase's independently persisted workset manifest and emit its phase closure record. End the research context and release later-data tool history, source-payload text and handles, verification excerpts, and temporary reasoning from the active context; never delete a store entry still referenced by canonical evidence.
+
+Start a new presentation context with `模板/盘后复盘模板.md`, the closure record, and only canonical artifact IDs and stable references. Allocate its report ID with `../shared/scripts/next_id.py RPT --root <workspace> --date YYYYMMDD` before writing `报告/YYYY-MM/RPT-YYYYMMDD-NNN.md`. It may render the recorded result and process axes without searching, changing either state, backfilling the original snapshot, or forming an outlook. A presentation failure never changes the validated review record. Reports state “不构成投资建议”.

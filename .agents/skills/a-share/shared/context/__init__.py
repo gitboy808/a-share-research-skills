@@ -1,15 +1,8 @@
-"""Public seams for assembling and hydrating A-share research worksets."""
+"""Public deep-module seam for assembling and revalidating worksets."""
 
-from .source_payload import FileSourcePayloadStore, SourcePayloadStore
-from .adapters import AugmentAdapter, SemanticAdapter
-from .workspace import assemble, hydrate, persist_workset_manifest
+from .workspace import assemble, hydrate
 
 __all__ = [
-    "FileSourcePayloadStore",
-    "SourcePayloadStore",
-    "AugmentAdapter",
-    "SemanticAdapter",
     "assemble",
     "hydrate",
-    "persist_workset_manifest",
 ]

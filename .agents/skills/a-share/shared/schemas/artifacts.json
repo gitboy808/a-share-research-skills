@@ -9,30 +9,153 @@
   },
   "task_contract": {
     "schema_version": "a-share-task-contract-v1",
-    "accepted_schema_versions": ["a-share-task-contract-v1", "a-share-workspace-v3"],
-    "required": ["schema_version", "contract_id", "version", "required_evidence"]
+    "accepted_schema_versions": ["a-share-task-contract-v1"],
+    "required": ["schema_version", "contract_id", "version", "workflow", "stage", "required_evidence"]
   },
   "artifacts": {
     "evidence_package": {
-      "required": ["schema_version", "artifact_type", "id", "status", "information_cutoff", "created_at", "objects"]
+      "required": ["schema_version", "artifact_type", "id", "status", "information_cutoff", "created_at", "objects", "stage", "authority"],
+      "directories": ["证据包"],
+      "id_pattern": "^EVI-[0-9]{8}-[0-9]{3}$",
+      "filename_from_id": true,
+      "stage": "investigate",
+      "authority": "evidence_fact_source",
+      "atomic_items": {
+        "heading_pattern": "^###[ \\t]+(EVI-[A-Za-z0-9-]+#[0-9]+)(?:[ \\t]*[｜|][^\\n]+)?[ \\t]*$",
+        "required_fields": ["事实陈述", "状态", "来源组 ID", "来源定位", "来源链", "事件时间 / 市场交易日", "数据口径", "关联对象 / 档案字段", "过期条件 / 下次复核"],
+        "status_field": "状态",
+        "allowed_statuses": ["已确认", "多源印证", "未证实", "冲突", "已否证"],
+        "payload_required_statuses": ["已确认", "多源印证", "冲突", "已否证"],
+        "remote_url_statuses": ["未证实"],
+        "source_group_field": "来源组 ID",
+        "source_group_pattern": "^SRCGRP-[A-Z0-9-]+$",
+        "source_locator_field": "来源定位",
+        "payload_locator_required": ["kind", "payload_id", "path", "sha256", "byte_length", "acquired_at", "line_start", "line_end"],
+        "expiry_field": "过期条件 / 下次复核"
+      }
     },
     "strategy_version": {
-      "required": ["schema_version", "artifact_type", "id", "version", "status", "strategy_kind", "scope", "created_at", "parameter_origin"]
+      "required": ["schema_version", "artifact_type", "id", "version", "status", "strategy_kind", "scope", "created_at", "parameter_origin"],
+      "directories": ["策略库"],
+      "id_pattern": "^STR-[A-Z0-9]+(?:-[A-Z0-9]+)*$",
+      "version_pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "initial_version": "0.1.0"
     },
     "run_record": {
-      "required": ["schema_version", "artifact_type", "id", "status", "created_at", "information_cutoff", "workflows"]
+      "required": ["schema_version", "artifact_type", "id", "status", "created_at", "information_cutoff", "workflows"],
+      "directories": ["运行记录"],
+      "id_pattern": "^RUN-[0-9]{8}-[0-9]{3}$",
+      "filename_from_id": true
+    },
+    "presentation_report": {
+      "required": ["schema_version", "artifact_type", "id", "status", "created_at", "information_cutoff", "record_kind", "stage", "authority", "source_refs"],
+      "directories": ["报告"],
+      "id_pattern": "^RPT-[0-9]{8}-[0-9]{3}$",
+      "filename_from_id": true,
+      "record_kind_stages": {
+        "scan_report": "scan",
+        "investigation_report": "investigate",
+        "analysis_report": "analyze",
+        "review_report": "review"
+      },
+      "authority": "presentation_projection"
+    },
+    "judgment_log": {
+      "required": ["schema_version", "artifact_type", "id", "status", "created_at", "information_cutoff", "record_kind", "write_stages", "authority"],
+      "directories": ["判断日志"],
+      "id_pattern": "^JLOG-[0-9]{6}$",
+      "record_kind": "judgment_log",
+      "write_stages": "analyze,review",
+      "authority": "judgment_fact_source",
+      "atomic_items": {
+        "heading_pattern": "^###[ \\t]+(J[0-9]{8}-[0-9]{3} v[0-9]+)(?:[ \\t]*[｜|][^\\n]+)?[ \\t]*$",
+        "required_fields": ["类型", "研究状态", "研究对象", "信息快照", "判断周期", "原子命题", "证据包 / 原子证据项", "价格纪律门", "置信区间", "证伪条件", "时限", "核心跟踪指标"],
+        "timestamp_fields": ["信息快照", "时限"],
+        "evidence_reference_field": "证据包 / 原子证据项",
+        "result_status_field": "结果状态",
+        "result_recorded_at_field": "结果记录时间",
+        "terminal_result_statuses": ["未触发", "兑现", "证伪", "不可判定"]
+      }
+    },
+    "object_dossier": {
+      "required": ["schema_version", "artifact_type", "id", "status", "created_at", "information_cutoff", "record_kind", "objects", "field_authority", "authority", "source_refs"],
+      "directories": ["对象档案"],
+      "id_pattern": "^DOS-(?:MARKET|INDUSTRY|THEME|STOCK)-[A-Z0-9-]+$",
+      "record_kind": "object_dossier",
+      "field_authority": "facts:investigate;analysis:analyze",
+      "authority": "dossier_current_view",
+      "atomic_items": {
+        "heading_pattern": "^###[ \\t]+FIELD[ \\t]+([A-Za-z0-9._:-]+)[ \\t]+v([A-Za-z0-9._-]+)[ \\t]*$",
+        "required_fields": ["字段身份", "字段版本", "字段状态", "字段值", "最后核实时间", "有效至 / 下次复核", "来源引用", "替代"],
+        "timestamp_fields": ["最后核实时间", "有效至 / 下次复核"]
+      }
+    },
+    "meta_review": {
+      "required": ["schema_version", "artifact_type", "id", "status", "created_at", "information_cutoff", "record_kind", "stage", "authority", "source_refs"],
+      "directories": ["周收敛"],
+      "id_pattern": "^META-[0-9]{4}-W[0-9]{2}$",
+      "record_kind": "weekly_convergence",
+      "stage": "meta-review",
+      "authority": "governance_record"
+    },
+    "observation_log": {
+      "required": ["schema_version", "artifact_type", "id", "status", "created_at", "information_cutoff", "record_kind", "stage", "authority"],
+      "directories": ["观察日志"],
+      "id_pattern": "^OLOG-[0-9]{6}$",
+      "record_kind": "observation_log",
+      "stage": "scan",
+      "authority": "observation_fact_source",
+      "atomic_items": {
+        "heading_pattern": "^###[ \\t]+(C[0-9]{8}-[0-9]{3} v[0-9]+)(?:[ \\t]*[｜|][^\\n]+)?[ \\t]*$",
+        "required_fields": ["对象类型 / 名称", "发现快照", "状态", "热度—确认象限", "发现依据", "确认触发", "失效条件", "最大可接受价格位移", "预计半衰期 / 到期", "缺失证据", "后续调研优先级"]
+      }
     },
     "historical_record": {
-      "required": ["schema_version", "artifact_type", "id", "status", "created_at", "information_cutoff", "record_kind"]
+      "required": ["schema_version", "artifact_type", "id", "status", "created_at", "information_cutoff", "record_kind", "authority", "migration_note", "migration_missing_fields"],
+      "directories": ["判断日志", "对象档案", "报告", "周收敛", "观察日志"],
+      "id_pattern": "^HIST-[A-Za-z0-9-]+$",
+      "authority": "migration_audit"
     },
     "workset_manifest": {
-      "required": ["schema_version", "artifact_type", "id", "status", "run_id", "created_at", "information_cutoff", "stable_references", "coverage", "gaps"]
+      "required": ["schema_version", "artifact_type", "id", "status", "run_id", "workflow", "stage", "created_at", "information_cutoff", "task_contract", "contract_instantiation", "instantiated_requirements", "instantiated_requirements_sha256", "strategy_version", "stable_references", "audit_references", "audited_exclusions", "relations", "relation_checks", "verification", "projection", "coverage", "gaps", "quality"],
+      "id_pattern": "^RUN-[0-9]{8}-[0-9]{3}-WORKSET-[A-Z0-9._-]+-[A-Z0-9._-]+$",
+      "slug_pattern": "^[A-Za-z0-9._-]+$",
+      "task_contract": {
+        "required": ["contract_id", "version", "registry_path", "sha256"]
+      },
+      "contract_instantiation": {
+        "required": ["schema_version", "workflow", "stage", "information_cutoff", "calibration_window_start", "objects", "handoff", "strategy_version", "task_conditions", "sha256"]
+      },
+      "legacy_snapshot": {
+        "historical_only": true,
+        "required": ["stable_references", "relations", "gaps", "coverage", "hydrate_eligible", "canonical_sha256"]
+      },
+      "relation_checks": {
+        "required": ["total", "resolved", "blocking_gaps"]
+      },
+      "verification": {
+        "required": ["status", "required_unit_ids", "verified_unit_ids", "missing_references"]
+      },
+      "coverage": {
+        "required": ["required_total", "required_covered", "required_missing", "coverage_ratio", "blocking", "blocking_gap_count", "requirements", "semantic_candidates_do_not_count"]
+      },
+      "quality": {
+        "required": ["assembled_units", "source_payload_bytes_in_workset", "hydrate_units", "projection_degraded", "context_proxy"],
+        "context_proxy_required": ["stable_reference_characters", "selected_source_characters", "indexed_source_characters", "raw_tool_payload_characters_entered", "token_replay_available"]
+      },
+      "relation_types": ["supported_by", "upstream_judgment", "constrained_by", "exception_to", "supported_by_judgment", "uses_strategy"],
+      "audit_relation_types": ["historically_referenced_evidence", "supersedes"]
     }
   },
   "allowed_status": {
     "evidence_package": ["complete", "partial", "unavailable"],
     "strategy_version": ["trial", "shadow", "official", "limited", "retired"],
     "run_record": ["completed", "partial", "failed"],
+    "presentation_report": ["completed", "partial", "degraded"],
+    "judgment_log": ["active", "closed"],
+    "object_dossier": ["active", "partial", "ended"],
+    "meta_review": ["completed", "partial"],
+    "observation_log": ["active", "closed"],
     "historical_record": ["historical"],
     "workset_manifest": ["completed", "partial", "degraded"]
   }

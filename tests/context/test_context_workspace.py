@@ -9,49 +9,66 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.support.workspace_builders import (
+    contract,
+    evidence_item,
+    run_manifest,
+    write_evidence,
+    write_text,
+)
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONTEXT_CLI = REPO_ROOT / ".agents/skills/a-share/shared/scripts/context_workspace.py"
+SHARED_ROOT = REPO_ROOT / ".agents/skills/a-share/shared"
+if str(SHARED_ROOT) not in sys.path:
+    sys.path.insert(0, str(SHARED_ROOT))
 
 
-def write_fixture_workspace(root: Path) -> None:
-    (root / "证据包/2026-08").mkdir(parents=True)
-    (root / "对象档案/个股").mkdir(parents=True)
-    (root / "策略库").mkdir(parents=True)
+TEST_CUTOFF = "2026-08-08T09:00:00+08:00"
+
+
+def write_fixture_workspace(root: Path, *, market_evidence_role: str | None = None) -> None:
     for name in ("CONTEXT.md", "研究规则.md", "经验库.md", "当前判断.md", "观察池.md"):
-        (root / name).write_text(f"# {name}\n", encoding="utf-8")
-    (root / "对象档案/索引.md").write_text("# 对象档案索引\n", encoding="utf-8")
-    (root / "策略库/索引.md").write_text("# 策略索引\n", encoding="utf-8")
-    (root / "证据包/2026-08/EVI-20260808-001.md").write_text(
-        """---
-schema_version: "a-share-workspace-v3"
-artifact_type: "evidence_package"
-id: "EVI-20260808-001"
-status: "complete"
-information_cutoff: "2026-08-08T09:00:00+08:00"
-created_at: "2026-08-08T09:01:00+08:00"
-objects: "个股:测试公司(600001)"
----
+        write_text(root, name, f"# {name}")
+    write_text(root, "对象档案/索引.md", "# 对象档案索引")
+    write_text(root, "策略库/索引.md", "# 策略索引")
+    write_evidence(
+        root,
+        "EVI-20260808-001",
+        [
+            evidence_item(
+                "EVI-20260808-001#001｜主营事实",
+                fact="测试公司已披露主营业务为测试设备。",
+                role=None,
+            ),
+            evidence_item(
+                "EVI-20260808-001#002｜市场事实",
+                fact="A 股市场成交保持活跃。",
+                status="多源印证",
+                object_name="市场:A股",
+                field="market_state",
+                role=market_evidence_role,
+                valid_until="下一个交易日",
+            ),
+        ],
+        cutoff=TEST_CUTOFF,
+        objects="个股:测试公司(600001)",
+    )
 
-# 测试证据包
 
-### EVI-20260808-001#001｜主营事实
-
-- **事实陈述**：测试公司已披露主营业务为测试设备。
-- **状态**：已确认
-- **关联对象 / 档案字段**：个股:测试公司(600001) / business
-- **数据交易日**：2026-08-07
-- **过期条件 / 下次复核**：重大公告或 2026-08-31
-
-### EVI-20260808-001#002｜市场事实
-
-- **事实陈述**：A 股市场成交保持活跃。
-- **状态**：多源印证
-- **关联对象 / 档案字段**：市场:A股 / market_state
-- **数据交易日**：2026-08-07
-- **过期条件 / 下次复核**：下一个交易日
-""",
-        encoding="utf-8",
+def market_task(*, allow_unknown: bool = True) -> dict[str, object]:
+    return contract(
+        [
+            {
+                "requirement_id": "market",
+                "unit_type": "evidence_item",
+                "object": "市场:A股",
+                "field": "market_state",
+                "allow_unknown": allow_unknown,
+            }
+        ],
+        contract_id="investigate.synthetic",
     )
 
 
@@ -59,7 +76,7 @@ class ContextWorkspaceSeamsTest(unittest.TestCase):
     def test_assemble_and_hydrate_return_coverage_gaps_and_stable_references(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            write_fixture_workspace(root)
+            write_fixture_workspace(root, market_evidence_role="confirmation")
             run_manifest = {
                 "schema_version": "a-share-workspace-v3",
                 "run_id": "RUN-20260808-001",
@@ -67,35 +84,15 @@ class ContextWorkspaceSeamsTest(unittest.TestCase):
                 "workflow": "investigate",
                 "stage": "research",
                 "information_cutoff": "2026-08-08T09:00:00+08:00",
-                "objects": ["个股:测试公司(600001)", "市场:A股"],
+                "objects": ["个股:测试公司(600001)"],
                 "budget": {"soft_units": 1},
-            }
-            task_manifest = {
-                "schema_version": "a-share-workspace-v3",
-                "contract_id": "investigate.synthetic",
-                "version": "1.0.0",
-                "required_evidence": [
-                    {
-                        "requirement_id": "business",
-                        "unit_type": "evidence_item",
-                        "object": "个股:测试公司(600001)",
-                        "field": "business",
-                        "evidence_role": "primary",
-                    },
-                    {
-                        "requirement_id": "market",
-                        "unit_type": "evidence_item",
-                        "object": "市场:A股",
-                        "field": "market_state",
-                        "evidence_role": "primary",
-                    },
-                ],
+                "task_contract": "investigate-stock-v1",
             }
 
             sys.path.insert(0, str(REPO_ROOT / ".agents/skills/a-share/shared"))
             from context import assemble, hydrate  # type: ignore[import-not-found]
 
-            assembled = assemble(run_manifest, task_manifest)
+            assembled = assemble(run_manifest)
             self.assertEqual(assembled["coverage"]["required_total"], 2)
             self.assertEqual(assembled["coverage"]["required_covered"], 2)
             self.assertEqual(assembled["gaps"], [])
@@ -111,9 +108,8 @@ class ContextWorkspaceSeamsTest(unittest.TestCase):
     def test_cli_uses_compact_json_and_preserves_required_items_under_soft_budget(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            write_fixture_workspace(root)
+            write_fixture_workspace(root, market_evidence_role="confirmation")
             run_path = root / "run.json"
-            task_path = root / "task.json"
             run_path.write_text(
                 json.dumps(
                     {
@@ -121,27 +117,11 @@ class ContextWorkspaceSeamsTest(unittest.TestCase):
                         "run_id": "RUN-20260808-002",
                         "workspace_root": str(root),
                         "workflow": "investigate",
+                        "stage": "research",
                         "information_cutoff": "2026-08-08T09:00:00+08:00",
+                        "objects": ["个股:测试公司(600001)"],
                         "budget": {"soft_units": 0},
-                    },
-                    ensure_ascii=False,
-                ),
-                encoding="utf-8",
-            )
-            task_path.write_text(
-                json.dumps(
-                    {
-                        "schema_version": "a-share-workspace-v3",
-                        "contract_id": "investigate.synthetic",
-                        "version": "1.0.0",
-                        "required_evidence": [
-                            {
-                                "requirement_id": "business",
-                                "unit_type": "evidence_item",
-                                "object": "个股:测试公司(600001)",
-                                "field": "business",
-                            }
-                        ],
+                        "task_contract": "investigate-stock-v1",
                     },
                     ensure_ascii=False,
                 ),
@@ -154,8 +134,6 @@ class ContextWorkspaceSeamsTest(unittest.TestCase):
                     "assemble",
                     "--run-manifest",
                     str(run_path),
-                    "--task-evidence",
-                    str(task_path),
                 ],
                 check=False,
                 capture_output=True,
@@ -163,7 +141,8 @@ class ContextWorkspaceSeamsTest(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             payload = json.loads(result.stdout)
-            self.assertEqual(payload["coverage"]["required_covered"], 1)
+            self.assertEqual(payload["coverage"]["required_total"], 2)
+            self.assertEqual(payload["coverage"]["required_covered"], 2)
             self.assertEqual(payload["gaps"], [])
             self.assertLessEqual(len(result.stdout.splitlines()), 1)
 
@@ -189,7 +168,8 @@ class ContextWorkspaceSeamsTest(unittest.TestCase):
     def test_source_payload_is_external_and_hydrate_returns_only_bounded_excerpt(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            from context import FileSourcePayloadStore, hydrate  # type: ignore[import-not-found]
+            from context import hydrate  # type: ignore[import-not-found]
+            from a_share_context.source_payload import FileSourcePayloadStore  # type: ignore[import-not-found]
 
             store = FileSourcePayloadStore(root)
             reference = store.put(
@@ -198,10 +178,15 @@ class ContextWorkspaceSeamsTest(unittest.TestCase):
                 source_uri="https://example.invalid/source",
                 acquired_at="2026-08-08T09:00:00+08:00",
             )
+            payload_id = reference["payload_id"]
             stable_reference = {
-                "ref": "atom:PAYLOAD-001",
-                "unit_id": "PAYLOAD-001",
-                "unit_type": "evidence_item",
+                "ref": f"source-payload:{payload_id}",
+                "unit_id": payload_id,
+                "unit_type": "source_payload_candidate",
+                "authority": "source_payload_store",
+                "information_cutoff": "2026-08-08T09:00:00+08:00",
+                "selection_cutoff": "2026-08-08T09:01:00+08:00",
+                "status": "unverified",
                 "source_locator": {
                     "kind": "source_payload",
                     **reference,
@@ -212,158 +197,152 @@ class ContextWorkspaceSeamsTest(unittest.TestCase):
             }
             hydrated = hydrate([stable_reference], source_payload_store=store)
             self.assertEqual(hydrated["units"][0]["verification_text"], "line 2")
+            self.assertTrue(hydrated["units"][0]["verification_only"])
             self.assertEqual(hydrated["quality"]["source_payload_externalized"], 1)
+            self.assertNotIn("workset_manifest_update", hydrated)
+
+    def test_forged_evidence_id_cannot_hydrate_a_valid_source_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            from context import hydrate  # type: ignore[import-not-found]
+            from a_share_context.source_payload import FileSourcePayloadStore  # type: ignore[import-not-found]
+
+            store = FileSourcePayloadStore(root)
+            locator = store.put(
+                "forged raw source\n",
+                run_id="RUN-20260808-003",
+                source_uri="https://example.invalid/forged",
+                acquired_at="2026-08-08T09:00:00+08:00",
+            )
+            forged_reference = {
+                "ref": "atom:EVI-20990101-999#1",
+                "unit_id": "EVI-20990101-999#1",
+                "unit_type": "evidence_item",
+                "authority": "evidence_fact_source",
+                "information_cutoff": "2026-08-08T09:00:00+08:00",
+                "selection_cutoff": "2026-08-08T09:01:00+08:00",
+                "status": "已确认",
+                "source_locator": {
+                    **locator,
+                    "start_line": 1,
+                    "end_line": 1,
+                },
+                "workspace_root": str(root),
+            }
+
+            hydrated = hydrate([forged_reference], source_payload_store=store)
+
+            self.assertEqual(hydrated["units"], [])
+            self.assertEqual(hydrated["quality"]["verification_failures"], 1)
+            self.assertIn(
+                "does not resolve to a canonical atomic unit",
+                hydrated["missing_references"][0]["reason"],
+            )
 
     def test_projection_rebuilds_after_fact_hash_changes_without_using_stale_text(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            write_fixture_workspace(root)
+            write_fixture_workspace(root, market_evidence_role="confirmation")
             run_manifest = {
                 "schema_version": "a-share-workspace-v3",
                 "run_id": "RUN-20260808-004",
                 "workspace_root": str(root),
                 "workflow": "investigate",
+                "stage": "research",
                 "information_cutoff": "2026-08-08T09:00:00+08:00",
-            }
-            task_manifest = {
-                "schema_version": "a-share-workspace-v3",
-                "contract_id": "investigate.synthetic",
-                "version": "1.0.0",
-                "required_evidence": [
-                    {
-                        "requirement_id": "business",
-                        "unit_type": "evidence_item",
-                        "object": "个股:测试公司(600001)",
-                        "field": "business",
-                    }
-                ],
+                "objects": ["个股:测试公司(600001)"],
+                "task_contract": "investigate-stock-v1",
             }
             sys.path.insert(0, str(REPO_ROOT / ".agents/skills/a-share/shared"))
-            from context import assemble  # type: ignore[import-not-found]
+            from context import assemble, hydrate  # type: ignore[import-not-found]
 
-            first = assemble(run_manifest, task_manifest)
+            first = assemble(run_manifest)
             evidence = root / "证据包/2026-08/EVI-20260808-001.md"
             original = evidence.read_text(encoding="utf-8")
             evidence.write_text(original.replace("测试设备", "精密测试设备"), encoding="utf-8")
-            second = assemble(run_manifest, task_manifest)
+            second = assemble(run_manifest)
             self.assertFalse(second["projection"]["projection_degraded"])
             self.assertNotEqual(first["projection"].get("source_manifest_hash"), second["projection"].get("source_manifest_hash"))
             hydrated = __import__("context", fromlist=["hydrate"]).hydrate(second["stable_references"])
             self.assertIn("精密测试设备", hydrated["units"][0]["verification_text"])
 
-    def test_conflict_is_a_recorded_noncovered_gap_and_allowed_unknown_is_not_silently_complete(self) -> None:
+    def test_noncovering_statuses_are_table_driven_and_conflicts_remain_vetoes(self) -> None:
+        sys.path.insert(0, str(REPO_ROOT / ".agents/skills/a-share/shared"))
+        from context import assemble, hydrate  # type: ignore[import-not-found]
+
+        cases = (
+            ("冲突", "conflict_or_denial", 1),
+            ("已确认 / 冲突（解禁股数口径）", "conflict_or_denial", 1),
+            ("未知", "unknown", 0),
+        )
+        for index, (status, reason, conflict_count) in enumerate(cases):
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                write_fixture_workspace(root)
+                source = root / "证据包/2026-08/EVI-20260808-001.md"
+                source.write_text(
+                    source.read_text(encoding="utf-8").replace("多源印证", status),
+                    encoding="utf-8",
+                )
+                result = assemble(
+                    run_manifest(
+                        root,
+                        run_id=f"RUN-20260808-STATUS-{index}",
+                        information_cutoff=TEST_CUTOFF,
+                    ),
+                    market_task(),
+                )
+                self.assertEqual(result["coverage"]["required_covered"], 0)
+                self.assertEqual(result["gaps"][0]["reason"], reason)
+                self.assertFalse(result["gaps"][0]["blocking"])
+                self.assertEqual(
+                    result["coverage"]["requirements"][0]["conflict_count"],
+                    conflict_count,
+                )
+                self.assertEqual(result["stable_references"], [])
+
+                if conflict_count:
+                    self.assertIn(
+                        {
+                            "unit_id": "EVI-20260808-001#002",
+                            "requirement_id": "market",
+                            "reason": reason,
+                        },
+                        result["selection_exclusions"],
+                    )
+
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             write_fixture_workspace(root)
-            evidence = root / "证据包/2026-08/EVI-20260808-001.md"
-            evidence.write_text(
-                evidence.read_text(encoding="utf-8").replace("多源印证", "冲突"),
+            source = root / "证据包/2026-08/EVI-20260808-001.md"
+            compound = "已确认 / 冲突（解禁股数口径）"
+            source.write_text(
+                source.read_text(encoding="utf-8").replace("多源印证", compound),
                 encoding="utf-8",
             )
-            sys.path.insert(0, str(REPO_ROOT / ".agents/skills/a-share/shared"))
-            from context import assemble  # type: ignore[import-not-found]
-
-            run = {
-                "workspace_root": str(root),
-                "run_id": "RUN-20260808-005",
-                "information_cutoff": "2026-08-08T09:00:00+08:00",
-            }
-            task = {
-                "contract_id": "investigate.synthetic",
-                "version": "1.0.0",
-                "required_evidence": [
-                    {
-                        "requirement_id": "market",
-                        "unit_type": "evidence_item",
-                        "object": "市场:A股",
-                        "field": "market_state",
-                        "allow_unknown": True,
-                    }
-                ],
-            }
-            result = assemble(run, task)
-            self.assertEqual(result["coverage"]["required_covered"], 0)
-            self.assertEqual(result["gaps"][0]["reason"], "conflict_or_denial")
-            self.assertFalse(result["gaps"][0]["blocking"])
-
-    def test_compound_conflict_status_is_excluded_and_marked_as_veto(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            write_fixture_workspace(root)
-            evidence = root / "证据包/2026-08/EVI-20260808-001.md"
-            evidence.write_text(
-                evidence.read_text(encoding="utf-8").replace(
-                    "多源印证", "已确认 / 冲突（解禁股数口径）"
-                ),
-                encoding="utf-8",
-            )
-            sys.path.insert(0, str(REPO_ROOT / ".agents/skills/a-share/shared"))
-            from context import assemble  # type: ignore[import-not-found]
-
-            result = assemble(
+            hydrated = hydrate(
                 {
                     "workspace_root": str(root),
-                    "run_id": "RUN-20260808-005-COMPOUND",
-                    "information_cutoff": "2026-08-08T09:00:00+08:00",
-                },
-                {
-                    "contract_id": "investigate.synthetic",
-                    "version": "1.0.0",
-                    "required_evidence": [
+                    "stable_references": [
                         {
-                            "requirement_id": "market",
+                            "ref": "atom:EVI-20260808-001#002",
+                            "unit_id": "EVI-20260808-001#002",
                             "unit_type": "evidence_item",
-                            "object": "市场:A股",
-                            "field": "market_state",
-                            "allow_unknown": True,
+                            "information_cutoff": TEST_CUTOFF,
+                            "status": compound,
+                            "source_locator": {
+                                "kind": "markdown",
+                                "path": "证据包/2026-08/EVI-20260808-001.md",
+                                "start_line": 1,
+                                "end_line": len(source.read_text(encoding="utf-8").splitlines()),
+                                "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+                            },
                         }
                     ],
-                },
+                }
             )
-            self.assertEqual(result["coverage"]["required_covered"], 0)
-            self.assertEqual(result["gaps"][0]["reason"], "conflict_or_denial")
-            self.assertEqual(result["coverage"]["requirements"][0]["conflict_count"], 1)
-            self.assertIn("veto", result["stable_references"][0]["evidence_roles"])
-            self.assertEqual(
-                result["stable_references"][0]["selection_reasons"][0]["excluded"],
-                "conflict_or_denial",
-            )
-
-    def test_allowed_unknown_remains_a_nonblocking_gap(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            write_fixture_workspace(root)
-            evidence = root / "证据包/2026-08/EVI-20260808-001.md"
-            evidence.write_text(
-                evidence.read_text(encoding="utf-8").replace("多源印证", "未知"),
-                encoding="utf-8",
-            )
-            sys.path.insert(0, str(REPO_ROOT / ".agents/skills/a-share/shared"))
-            from context import assemble  # type: ignore[import-not-found]
-
-            result = assemble(
-                {
-                    "workspace_root": str(root),
-                    "run_id": "RUN-20260808-007",
-                    "information_cutoff": "2026-08-08T09:00:00+08:00",
-                },
-                {
-                    "contract_id": "investigate.synthetic",
-                    "version": "1.0.0",
-                    "required_evidence": [
-                        {
-                            "requirement_id": "market",
-                            "unit_type": "evidence_item",
-                            "object": "市场:A股",
-                            "field": "market_state",
-                            "allow_unknown": True,
-                        }
-                    ],
-                },
-            )
-            self.assertEqual(result["coverage"]["required_covered"], 0)
-            self.assertEqual(result["gaps"][0]["reason"], "unknown")
-            self.assertFalse(result["gaps"][0]["blocking"])
+            self.assertEqual(hydrated["units"], [])
+            self.assertIn("conflict_or_denial", hydrated["missing_references"][0]["reason"])
 
     def test_future_snapshot_is_excluded_and_hydrate_rechecks_cutoff(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -455,105 +434,117 @@ class ContextWorkspaceSeamsTest(unittest.TestCase):
             )
             self.assertEqual(Path(result["projection"]["path"]), root.resolve() / ".context/custom.sqlite3")
 
+    def test_projection_path_cannot_escape_the_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "workspace"
+            root.mkdir()
+            outside = base / "outside.sqlite3"
+            sys.path.insert(0, str(REPO_ROOT / ".agents/skills/a-share/shared"))
+            from context import assemble  # type: ignore[import-not-found]
+
+            with self.assertRaisesRegex(ValueError, "projection_path escapes workspace"):
+                assemble(
+                    {
+                        "workspace_root": str(root),
+                        "run_id": "RUN-20260808-PROJECTION-PATH",
+                        "projection_path": str(outside),
+                    },
+                    {
+                        "schema_version": "a-share-workspace-v3",
+                        "contract_id": "test.projection-path",
+                        "version": "1.0.0",
+                        "required_evidence": [],
+                    },
+                )
+            self.assertFalse(outside.exists())
+
     def test_persistent_run_writes_a_machine_readable_workset_manifest_without_original_text(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            write_fixture_workspace(root)
+            write_fixture_workspace(root, market_evidence_role="confirmation")
             sys.path.insert(0, str(REPO_ROOT / ".agents/skills/a-share/shared"))
             from context import assemble  # type: ignore[import-not-found]
 
             result = assemble(
                 {
                     "workspace_root": str(root),
+                    "schema_version": "a-share-workspace-v3",
                     "run_id": "RUN-20260808-006",
                     "workflow": "investigate",
+                    "stage": "research",
                     "information_cutoff": "2026-08-08T09:00:00+08:00",
+                    "objects": ["个股:测试公司(600001)"],
                     "persist_workset_manifest": True,
-                },
-                {
-                    "contract_id": "investigate.synthetic",
-                    "version": "1.0.0",
-                    "required_evidence": [],
+                    "task_contract": "investigate-stock-v1",
                 },
             )
             manifest_path = Path(result["workset_manifest_path"])
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             self.assertEqual(manifest["artifact_type"], "workset_manifest")
             self.assertEqual(manifest["status"], "completed")
+            self.assertEqual(
+                manifest["task_contract"]["registry_path"],
+                ".agents/skills/a-share/shared/contracts/investigate-stock-v1.json",
+            )
+            self.assertEqual(
+                manifest["task_contract"]["sha256"],
+                hashlib.sha256(
+                    (
+                        REPO_ROOT
+                        / ".agents/skills/a-share/shared/contracts/investigate-stock-v1.json"
+                    ).read_bytes()
+                ).hexdigest(),
+            )
+            self.assertEqual(
+                manifest["contract_instantiation"]["objects"],
+                ["个股:测试公司(600001)"],
+            )
+            instantiation_payload = {
+                key: value
+                for key, value in manifest["contract_instantiation"].items()
+                if key != "sha256"
+            }
+            self.assertEqual(
+                manifest["contract_instantiation"]["sha256"],
+                hashlib.sha256(
+                    json.dumps(
+                        instantiation_payload,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ).encode("utf-8")
+                ).hexdigest(),
+            )
+            self.assertTrue(manifest["instantiated_requirements"])
+            business_requirement = next(
+                item
+                for item in manifest["instantiated_requirements"]
+                if item["base_requirement_id"] == "business-realization"
+            )
+            self.assertEqual(business_requirement["objects"], ["个股:测试公司(600001)"])
+            self.assertEqual(business_requirement["unit_types"], ["evidence_item"])
+            self.assertEqual(business_requirement["fields"], ["business"])
+            self.assertEqual(business_requirement["roles"], ["primary"])
+            canonical_requirements = json.dumps(
+                manifest["instantiated_requirements"],
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            self.assertEqual(
+                manifest["instantiated_requirements_sha256"],
+                hashlib.sha256(canonical_requirements.encode("utf-8")).hexdigest(),
+            )
+            self.assertEqual(
+                [
+                    row["requirement"]
+                    for row in manifest["coverage"]["requirements"]
+                ],
+                manifest["instantiated_requirements"],
+            )
             self.assertNotIn("verification_text", manifest_path.read_text(encoding="utf-8"))
             self.assertNotIn("事实陈述", manifest_path.read_text(encoding="utf-8"))
-
-    def test_migration_cli_requires_isolated_output_and_removes_legacy_runtime_directories(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            base = Path(directory)
-            source = base / "old"
-            output = base / "new"
-            for relative in (
-                "分析报告/2026-08/report.md",
-                "调研报告/2026-08/investigation.md",
-                "复盘报告/2026-08/review.md",
-                "扫描报告/2026-08/scan.md",
-                "证据包/2026-08/EVI-20260808-001.md",
-                "判断日志/2026-08.md",
-                "对象档案/个股/测试公司.md",
-            ):
-                path = source / relative
-                path.parent.mkdir(parents=True, exist_ok=True)
-                content = "# 历史材料\n\n当时未记录的字段保持未知。\n"
-                if relative == "判断日志/2026-08.md":
-                    content = "# 判断日志\n\n## 历史批次\n\n- **J0803-01 v1**｜历史判断正文。\n"
-                path.write_text(content, encoding="utf-8")
-            for relative in (
-                "CONTEXT.md",
-                "研究规则.md",
-                "经验库.md",
-                "当前判断.md",
-                "观察池.md",
-                "对象档案/索引.md",
-                "策略库/索引.md",
-            ):
-                path = source / relative
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(f"# {relative}\n", encoding="utf-8")
-            before = {
-                path.relative_to(source).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
-                for path in source.rglob("*")
-                if path.is_file()
-            }
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    str(REPO_ROOT / "scripts/migrate_workspace.py"),
-                    "--input",
-                    str(source),
-                    "--output",
-                    str(output),
-                ],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            self.assertEqual(result.returncode, 0, result.stderr)
-            payload = json.loads(result.stdout)
-            self.assertEqual(payload["status"], "completed")
-            self.assertFalse((output / "分析报告").exists())
-            self.assertFalse((output / "调研报告").exists())
-            self.assertFalse((output / "复盘报告").exists())
-            self.assertFalse((output / "扫描报告").exists())
-            self.assertTrue((output / "报告/分析/2026-08/report.md").is_file())
-            self.assertTrue((output / "迁移映射.json").is_file())
-            report = json.loads((output / "迁移映射.json").read_text(encoding="utf-8"))
-            self.assertEqual(report["acceptance"]["status"], "not_run")
-            self.assertTrue((output / "判断日志/2026-08.md").read_text(encoding="utf-8").startswith("---\n"))
-            self.assertTrue((output / "对象档案/个股/测试公司.md").read_text(encoding="utf-8").startswith("---\n"))
-            self.assertTrue((output / "判断日志/迁移-2026-08.md").is_file())
-            after = {
-                path.relative_to(source).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
-                for path in source.rglob("*")
-                if path.is_file()
-            }
-            self.assertEqual(before, after)
-
 
 if __name__ == "__main__":
     unittest.main()

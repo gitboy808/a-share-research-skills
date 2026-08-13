@@ -1,23 +1,69 @@
-# Editors and operating systems
+# Operating systems and editors
 .idea/
 .vscode/
 .DS_Store
 ._*
+Thumbs.db
+Desktop.ini
 *.swp
+*.swo
 *~
+*.orig
+*.rej
 
-# Python and local logs
+# Python bytecode, virtual environments and tool caches
 __pycache__/
 *.py[cod]
+*$py.class
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pyright/
+.pytype/
+.ipynb_checkpoints/
+.dmypy.json
+dmypy.json
+.tox/
+.nox/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.venv/
+venv/
+env/
+ENV/
+.pdm-python
+__pypackages__/
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# Local logs and scratch output
+*.log
 .codex-log/
+/.cache/
+/.codex/
+/.tmp/
+/tmp/
 
 # Secrets and local configuration
 .env
 .env.*
 !.env.example
+.envrc
+.direnv/
+.secrets/
 *.key
 *.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+.claude/settings.local.json
 
 # Generated private research workspace
 /当前判断.md
@@ -30,7 +76,19 @@ __pycache__/
 /对象档案/
 /报告/
 /周收敛/
+/分析报告/
+/调研报告/
+/复盘报告/
+/扫描报告/
 
-# Rebuildable context projection and external source payload cache
+# Rebuildable projections, external source payloads and local acceptance output
 /.context/
 /.source-payloads/
+/迁移映射.json
+/migration-report*.json
+/old-baseline*.json
+/measurement-telemetry*.jsonl
+/telemetry-export*.jsonl
+/shadow-report*.json
+/shadow-replay-artifacts/
+/migration-output/

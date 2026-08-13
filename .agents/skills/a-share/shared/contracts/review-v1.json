@@ -10,6 +10,10 @@
     {
       "requirement_id": "original-judgment",
       "unit_type": "judgment_version",
+      "bind_to_run_objects": true,
+      "bind_to_handoff": "judgment_ids",
+      "eligibility_mode": "historical_as_of",
+      "cutoff_basis": "unit_snapshot",
       "required": true,
       "allow_unknown": false
     },
@@ -17,6 +21,10 @@
       "requirement_id": "original-snapshot",
       "unit_type": "evidence_item",
       "evidence_role": "primary",
+      "bind_to_run_objects": true,
+      "bind_to_handoff": "evidence_ids",
+      "eligibility_mode": "historical_as_of",
+      "cutoff_basis": "judgment_snapshot",
       "required": true,
       "allow_unknown": false
     },
@@ -25,6 +33,10 @@
       "unit_type": "evidence_item",
       "field": "outcome",
       "evidence_role": "confirmation",
+      "bind_to_run_objects": true,
+      "bind_to_handoff": "evidence_ids",
+      "eligibility_mode": "historical_as_of",
+      "cutoff_basis": "run_cutoff",
       "required": true,
       "allow_unknown": true
     }

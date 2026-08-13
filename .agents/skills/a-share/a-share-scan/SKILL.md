@@ -12,9 +12,13 @@ scan task contract, call `context_workspace.py assemble`, and hydrate selected
 stable references. Do not parse Markdown, query SQLite/FTS5, or treat semantic
 adapter hits as evidence directly.
 
+Follow the [阶段运行协议](../shared/contracts/README.md#阶段运行协议) for every routed or direct run.
+
 ## Start
 
-If no reusable router manifest exists, perform the preflight in `../a-share-research/SKILL.md`. Use the scan task contract and the assembled workset to load `模板/扫描报告模板.md`, `模板/观察候选模板.md`, relevant resident views and cited atomic units. Freeze the scan cutoff and report data coverage.
+From a router, reuse only its validated workspace and RUN ID. When called directly, validate the workspace and allocate a RUN ID before any persistent write. In both cases, create a fresh phase manifest with `workflow: scan`, `stage: scan`, canonical objects, a timezone-aware `information_cutoff`, the versioned scan task contract, and an independent workset-manifest target. Use its assembled workset to load `模板/观察候选模板.md`, relevant resident views, and cited atomic units. Freeze the scan cutoff and report data coverage.
+
+The registered contract uses `prospective_current`. Do not add skill-local expiry, lifecycle, or version filtering; inspect assemble's audited exclusions and hydrate only live stable references.
 
 ## Scope
 
@@ -35,10 +39,16 @@ If no reusable router manifest exists, perform the preflight in `../a-share-rese
 
 ## Output and scoring
 
-Use `模板/扫描报告模板.md`. Candidate IDs use `CYYYYMMDD-NNN`; obtain the next ID with `../shared/scripts/next_id.py C --root <workspace> --date YYYYMMDD`.
+Candidate IDs use `CYYYYMMDD-NNN`; obtain the next ID with `../shared/scripts/next_id.py C --root <workspace> --date YYYYMMDD`.
 
 Do not assign bull/bear confidence or use recommendation language. Predeclare fields for effective discovery, late discovery, false positive, untriggered expiry, and missed-opportunity audit. Evaluate discovery rate, lead time, false positives, and misses separately.
 
 ## Write boundary
 
-May write observation candidates and scan reports. Must not create evidence packages, formal judgments, lesson-state changes, or strategy parameters.
+The research context may write observation candidates; the later presentation context may write scan reports. Neither may create evidence packages, formal judgments, lesson-state changes, or strategy parameters.
+
+## Close research, then present
+
+After observation-candidate writes pass workspace validation, confirm that `hydrate` updated this scan phase's independently persisted workset manifest and emit its phase closure record. End the research context and release source-payload text and handles, tool history, verification excerpts, and temporary reasoning from the active context; never delete a store entry still referenced by a canonical artifact.
+
+Start a new presentation context with `模板/扫描报告模板.md`, the closure record, and only canonical artifact IDs and stable references. Allocate its report ID with `../shared/scripts/next_id.py RPT --root <workspace> --date YYYYMMDD` before writing `报告/YYYY-MM/RPT-YYYYMMDD-NNN.md`. It may write the scan report without searching, adding evidence, changing candidate fields, or creating judgments. A presentation failure never reopens or rewrites the validated candidate record.

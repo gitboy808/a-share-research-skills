@@ -14,6 +14,7 @@ PATTERNS = {
     "C": r"C{date}-(\d{{3}})",
     "EVI": r"EVI-{date}-(\d{{3}})",
     "RUN": r"RUN-{date}-(\d{{3}})",
+    "RPT": r"RPT-{date}-(\d{{3}})",
 }
 
 

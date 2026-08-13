@@ -10,18 +10,21 @@
     {
       "requirement_id": "review-window",
       "unit_type": "judgment_version",
+      "eligibility_mode": "calibration_window",
       "required": true,
       "allow_unknown": true
     },
     {
       "requirement_id": "lesson-and-cluster",
       "unit_type": "lesson",
+      "eligibility_mode": "calibration_window",
       "required": true,
       "allow_unknown": true
     },
     {
       "requirement_id": "strategy-version",
       "unit_type": "strategy_version",
+      "eligibility_mode": "calibration_window",
       "required": true,
       "allow_unknown": false
     }
