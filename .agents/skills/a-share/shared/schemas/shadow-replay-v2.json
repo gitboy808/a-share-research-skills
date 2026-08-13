@@ -1,0 +1,295 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "a-share-shadow-replay-v2",
+  "title": "A-share shadow replay bound inputs",
+  "oneOf": [
+    { "$ref": "#/$defs/suite" },
+    { "$ref": "#/$defs/baseline" },
+    { "$ref": "#/$defs/measurementTrace" }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "sessionId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "fileEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "session_id"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "session_id": { "$ref": "#/$defs/sessionId" }
+      }
+    },
+    "sourceLocator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "start_line", "end_line", "source_sha256", "content_sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "start_line": { "type": "integer", "minimum": 1 },
+        "end_line": { "type": "integer", "minimum": 1 },
+        "source_sha256": { "$ref": "#/$defs/sha256" },
+        "content_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "unit_id"],
+      "properties": {
+        "category": { "enum": ["conflict", "denial", "expired", "future"] },
+        "unit_id": { "type": "string", "minLength": 1 }
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "case_type",
+        "workflow",
+        "stage",
+        "contract",
+        "object_type",
+        "objects",
+        "information_cutoff",
+        "expectations"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "case_type": { "enum": ["scan", "investigate", "analyze", "event", "review"] },
+        "workflow": { "enum": ["scan", "investigate", "analyze", "review"] },
+        "stage": { "enum": ["scan", "research", "analysis", "review"] },
+        "contract": { "type": "string", "minLength": 1 },
+        "object_type": { "type": "string", "minLength": 1 },
+        "objects": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "handoff": { "type": "object" },
+        "information_cutoff": { "type": "string", "format": "date-time" },
+        "expectations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["conditions"],
+          "properties": {
+            "conditions": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/condition" }
+            }
+          }
+        }
+      }
+    },
+    "suite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "session_id", "migration_id", "bindings", "targets", "scenarios"],
+      "properties": {
+        "schema_version": { "const": "a-share-shadow-replay-v2" },
+        "session_id": { "$ref": "#/$defs/sessionId" },
+        "migration_id": { "type": "string", "minLength": 1 },
+        "bindings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["old_baseline", "migration_report", "new_workspace", "measurement_trace"],
+          "properties": {
+            "old_baseline": { "$ref": "#/$defs/binding" },
+            "migration_report": { "$ref": "#/$defs/binding" },
+            "new_workspace": { "$ref": "#/$defs/binding" },
+            "measurement_trace": { "$ref": "#/$defs/binding" }
+          }
+        },
+        "targets": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "min_raw_tool_payload_reduction_ratio",
+            "max_main_context_ratio",
+            "max_main_context_peak_tokens"
+          ],
+          "properties": {
+            "min_raw_tool_payload_reduction_ratio": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "max_main_context_ratio": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "max_main_context_peak_tokens": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        "scenarios": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/scenario" }
+        }
+      }
+    },
+    "semanticFields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proposition", "information_cutoff", "status", "relations"],
+      "properties": {
+        "proposition": { "type": "string", "minLength": 1 },
+        "information_cutoff": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "minLength": 1 },
+        "relations": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "semanticUnit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenario_id", "unit_id", "source_locator", "fields", "fields_sha256"],
+      "properties": {
+        "scenario_id": { "type": "string", "minLength": 1 },
+        "unit_id": { "type": "string", "minLength": 1 },
+        "source_locator": { "$ref": "#/$defs/sourceLocator" },
+        "fields": { "$ref": "#/$defs/semanticFields" },
+        "fields_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "executionFields": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workflow", "stage", "contract", "selector", "required_unit_ids", "selected_unit_ids"],
+      "properties": {
+        "workflow": { "type": "string", "minLength": 1 },
+        "stage": { "type": "string", "minLength": 1 },
+        "contract": { "type": "string", "minLength": 1 },
+        "selector": { "type": "object", "minProperties": 1 },
+        "required_unit_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "selected_unit_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "executionArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenario_id", "source_locator", "fields", "fields_sha256"],
+      "properties": {
+        "scenario_id": { "type": "string", "minLength": 1 },
+        "source_locator": { "$ref": "#/$defs/sourceLocator" },
+        "fields": { "$ref": "#/$defs/executionFields" },
+        "fields_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "session_id",
+        "migration_id",
+        "captured_at",
+        "workspace_root",
+        "workspace_sha256",
+        "files",
+        "semantic_units",
+        "execution_artifacts"
+      ],
+      "properties": {
+        "schema_version": { "const": "a-share-shadow-baseline-v1" },
+        "session_id": { "$ref": "#/$defs/sessionId" },
+        "migration_id": { "type": "string", "minLength": 1 },
+        "captured_at": { "type": "string", "format": "date-time" },
+        "workspace_root": { "type": "string", "minLength": 1 },
+        "workspace_sha256": { "$ref": "#/$defs/sha256" },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/fileEntry" }
+        },
+        "semantic_units": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/semanticUnit" }
+        },
+        "execution_artifacts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/executionArtifact" }
+        }
+      }
+    },
+    "measurementEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "session_id",
+        "phase",
+        "metric",
+        "value",
+        "unit",
+        "source_kind",
+        "observation_status",
+        "observed_at",
+        "source_locator"
+      ],
+      "properties": {
+        "event_id": { "type": "string", "minLength": 1 },
+        "session_id": { "$ref": "#/$defs/sessionId" },
+        "phase": { "enum": ["baseline", "candidate"] },
+        "metric": {
+          "enum": ["raw_tool_payload_characters", "main_context_characters", "main_context_peak_tokens"]
+        },
+        "value": { "type": "number", "minimum": 0 },
+        "unit": { "enum": ["characters", "tokens"] },
+        "source_kind": {
+          "enum": ["tool_payload_counter", "context_character_counter", "model_context_telemetry"]
+        },
+        "observation_status": { "enum": ["observed", "unavailable", "estimated"] },
+        "observed_at": { "type": "string", "format": "date-time" },
+        "source_locator": { "$ref": "#/$defs/sourceLocator" }
+      }
+    },
+    "measurementTrace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "trace_id", "session_id", "migration_id", "observed_at", "events"],
+      "properties": {
+        "schema_version": { "const": "a-share-shadow-measurement-trace-v1" },
+        "trace_id": { "type": "string", "minLength": 1 },
+        "session_id": { "$ref": "#/$defs/sessionId" },
+        "migration_id": { "type": "string", "minLength": 1 },
+        "observed_at": { "type": "string", "format": "date-time" },
+        "events": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/measurementEvent" }
+        }
+      }
+    }
+  }
+}
